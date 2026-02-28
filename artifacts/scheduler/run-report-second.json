@@ -1,0 +1,23 @@
+{
+  "generated_at_utc": "2026-02-28T06:17:47.602595+00:00",
+  "run_id": "test-run-2",
+  "dequeued_count": 0,
+  "blocked_count": 1,
+  "duplicate_count": 3,
+  "dequeued": [],
+  "blocked": [
+    {
+      "card_id": "card-203",
+      "issue_number": 23,
+      "unresolved_depends_on": [
+        99
+      ]
+    }
+  ],
+  "duplicates": [
+    "card-201",
+    "card-202",
+    "card-201"
+  ],
+  "replanning_triggered_cards": []
+}
