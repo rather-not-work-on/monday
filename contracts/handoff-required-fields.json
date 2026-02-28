@@ -1,0 +1,15 @@
+{
+  "source_template": "planningops/templates/handoff-packet-template.md",
+  "required_fields": [
+    "issue_number",
+    "loop_id",
+    "ecp_ref",
+    "delta_notes",
+    "intake_check_ref",
+    "simulation_report_ref",
+    "verification_report_ref",
+    "transition_log_ref",
+    "recommended_next_step",
+    "blocker_if_any"
+  ]
+}

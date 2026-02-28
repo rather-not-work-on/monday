@@ -1,0 +1,20 @@
+{
+  "generated_at_utc": "2026-02-28T06:16:34.008553+00:00",
+  "verdict": "pass",
+  "mismatch_count": 0,
+  "missing_in_map": [],
+  "missing_in_sample": [],
+  "missing_runtime_fields": [],
+  "runtime_input": {
+    "issue_number": 20,
+    "loop_id": "loop-20260228T060000Z-issue-20",
+    "ecp_ref": "planningops/templates/ecp-template.md",
+    "delta_notes": "none",
+    "intake_check_ref": "planningops/artifacts/loops/2026-02-28/loop-xyz/intake-check.json",
+    "simulation_report_ref": "planningops/artifacts/loops/2026-02-28/loop-xyz/simulation-report.md",
+    "verification_report_ref": "planningops/artifacts/loops/2026-02-28/loop-xyz/verification-report.json",
+    "transition_log_ref": "planningops/artifacts/transition-log/2026-02-28.ndjson",
+    "recommended_next_step": "enqueue-runtime-worker",
+    "blocker_if_any": ""
+  }
+}

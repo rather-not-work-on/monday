@@ -1,0 +1,12 @@
+{
+  "issue_number": 20,
+  "loop_id": "loop-20260228T060000Z-issue-20",
+  "ecp_ref": "planningops/templates/ecp-template.md",
+  "delta_notes": "none",
+  "intake_check_ref": "planningops/artifacts/loops/2026-02-28/loop-xyz/intake-check.json",
+  "simulation_report_ref": "planningops/artifacts/loops/2026-02-28/loop-xyz/simulation-report.md",
+  "verification_report_ref": "planningops/artifacts/loops/2026-02-28/loop-xyz/verification-report.json",
+  "transition_log_ref": "planningops/artifacts/transition-log/2026-02-28.ndjson",
+  "recommended_next_step": "enqueue-runtime-worker",
+  "blocker_if_any": ""
+}

@@ -1,0 +1,16 @@
+{
+  "external_contract": "Executor",
+  "internal_runtime": "Worker",
+  "field_map": {
+    "issue_number": "issue_number",
+    "loop_id": "loop_id",
+    "ecp_ref": "ecp_ref",
+    "delta_notes": "delta_notes",
+    "intake_check_ref": "intake_check_ref",
+    "simulation_report_ref": "simulation_report_ref",
+    "verification_report_ref": "verification_report_ref",
+    "transition_log_ref": "transition_log_ref",
+    "recommended_next_step": "recommended_next_step",
+    "blocker_if_any": "blocker_if_any"
+  }
+}
