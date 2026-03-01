@@ -9,11 +9,14 @@ Runtime surface for UAP Executor/Worker integration.
 
 ## Key Files
 - `docs/adr/adr-0001-executor-worker-naming.md`
+- `docs/runbook/planningops-handoff-scheduler-runbook.md`
 - `contracts/handoff-required-fields.json`
 - `contracts/executor-worker-handoff-map.json`
 - `scripts/validate_handoff_mapping.py`
+- `scripts/integrate_planningops_handoff.py`
 
 ## Smoke Validation
 ```bash
 python3 scripts/validate_handoff_mapping.py
+python3 scripts/integrate_planningops_handoff.py --run-id handoff-integration-local
 ```

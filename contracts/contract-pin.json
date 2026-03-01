@@ -1,0 +1,11 @@
+{
+  "source_repo": "rather-not-work-on/platform-contracts",
+  "contract_bundle_version": "2026.02.28",
+  "pinned_contracts": [
+    "c1-run-lifecycle",
+    "c2-subtask-handoff",
+    "c3-executor-result",
+    "c8-plan-to-github-projection"
+  ],
+  "consumer_repo": "rather-not-work-on/monday"
+}
