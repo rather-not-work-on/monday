@@ -1,0 +1,61 @@
+name: Monday Local CI
+
+on:
+  pull_request:
+    paths:
+      - "contracts/**"
+      - "fixtures/**"
+      - "scripts/**"
+      - "docs/runbook/**"
+      - "README.md"
+      - ".github/workflows/monday-local-ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "contracts/**"
+      - "fixtures/**"
+      - "scripts/**"
+      - "docs/runbook/**"
+      - "README.md"
+      - ".github/workflows/monday-local-ci.yml"
+  workflow_dispatch:
+
+jobs:
+  monday-local-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate handoff mapping smoke
+        run: |
+          mkdir -p /tmp/monday
+          python3 scripts/validate_handoff_mapping.py \
+            --output /tmp/monday/handoff-smoke-report.json
+
+      - name: Run planningops handoff integration smoke
+        run: |
+          mkdir -p /tmp/monday
+          python3 scripts/integrate_planningops_handoff.py \
+            --run-id "ci-${{ github.run_id }}" \
+            --handoff-report /tmp/monday/handoff-smoke-report.json \
+            --queue-out /tmp/monday/queue.from-planningops.json \
+            --scheduler-report /tmp/monday/scheduler-run-report.json \
+            --integration-report /tmp/monday/planningops-handoff-report.json \
+            --idempotency /tmp/monday/idempotency.json \
+            --transition-log /tmp/monday/scheduler.ndjson
+
+      - name: Validate contract pin
+        run: |
+          mkdir -p /tmp/monday
+          python3 scripts/validate_contract_pin.py \
+            --output /tmp/monday/contract-pin-report.json
+
+      - name: Seeded failure guard for contract pin
+        run: bash scripts/test_contract_pin_validation.sh

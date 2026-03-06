@@ -19,4 +19,15 @@ Runtime surface for UAP Executor/Worker integration.
 ```bash
 python3 scripts/validate_handoff_mapping.py
 python3 scripts/integrate_planningops_handoff.py --run-id handoff-integration-local
+python3 scripts/validate_contract_pin.py
+bash scripts/test_contract_pin_validation.sh
 ```
+
+## Local CI Baseline
+- workflow: `.github/workflows/monday-local-ci.yml`
+- checks:
+  - handoff mapping smoke
+  - planningops handoff integration smoke
+  - contract pin validation
+  - seeded failure guard (`test_contract_pin_validation.sh`)
+- remediation guide: `docs/runbook/planningops-handoff-scheduler-runbook.md#contract-pin-remediation`
