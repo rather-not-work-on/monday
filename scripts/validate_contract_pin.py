@@ -89,7 +89,7 @@ def validate_pin(pin: dict, required_contracts):
 def main():
     parser = argparse.ArgumentParser(description="Validate monday contract pin against baseline policy")
     parser.add_argument("--pin", default="contracts/contract-pin.json")
-    parser.add_argument("--output", default="artifacts/validation/contract-pin-report.json")
+    parser.add_argument("--output", default="runtime-artifacts/validation/contract-pin-report.json")
     parser.add_argument(
         "--required-contracts",
         default="c1-run-lifecycle,c2-subtask-handoff,c3-executor-result,c8-plan-to-github-projection",

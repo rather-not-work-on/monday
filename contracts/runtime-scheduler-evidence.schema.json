@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "monday-runtime-scheduler-evidence",
+  "title": "Monday Runtime Scheduler Evidence",
+  "type": "object",
+  "required": [
+    "generated_at_utc",
+    "run_id",
+    "verdict",
+    "reason_code",
+    "reason_taxonomy_version",
+    "dequeued_count",
+    "blocked_count",
+    "duplicate_count",
+    "replanning_trigger_count",
+    "dequeued",
+    "blocked",
+    "duplicates",
+    "replanning_triggered_cards"
+  ],
+  "properties": {
+    "generated_at_utc": {"type": "string", "format": "date-time"},
+    "run_id": {"type": "string", "minLength": 1},
+    "verdict": {"type": "string", "enum": ["pass", "fail"]},
+    "reason_code": {
+      "type": "string",
+      "enum": ["ok", "duplicates_detected", "blocked_dependencies", "scheduler_no_dequeue"]
+    },
+    "reason_taxonomy_version": {"type": "integer", "minimum": 1},
+    "dequeued_count": {"type": "integer", "minimum": 0},
+    "blocked_count": {"type": "integer", "minimum": 0},
+    "duplicate_count": {"type": "integer", "minimum": 0},
+    "replanning_trigger_count": {"type": "integer", "minimum": 0},
+    "dequeued": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["card_id", "issue_number"],
+        "properties": {
+          "card_id": {"type": "string", "minLength": 1},
+          "issue_number": {"type": "integer", "minimum": 1}
+        },
+        "additionalProperties": false
+      }
+    },
+    "blocked": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["card_id", "issue_number", "unresolved_depends_on"],
+        "properties": {
+          "card_id": {"type": "string", "minLength": 1},
+          "issue_number": {"type": "integer", "minimum": 1},
+          "unresolved_depends_on": {
+            "type": "array",
+            "items": {"type": "integer", "minimum": 1}
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "duplicates": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "replanning_triggered_cards": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    }
+  },
+  "additionalProperties": false
+}

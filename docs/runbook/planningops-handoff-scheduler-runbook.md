@@ -5,15 +5,25 @@ Run one integration cycle from planningops handoff context into monday scheduler
 
 ## Command
 ```bash
+python3 scripts/validate_handoff_mapping.py --run-id handoff-validate-<timestamp>
 python3 scripts/integrate_planningops_handoff.py --run-id handoff-integration-<timestamp>
+python3 scripts/validate_runtime_evidence.py \
+  --kind integration \
+  --report runtime-artifacts/integration/handoff-integration-<timestamp>/planningops-handoff-report.json
 ```
 
 ## Generated Artifacts
-- `artifacts/integration/handoff-smoke-report.json`
-- `artifacts/integration/queue.from-planningops.json`
-- `artifacts/integration/scheduler-run-report.json`
-- `artifacts/integration/planningops-handoff-report.json`
-- `artifacts/integration/scheduler.ndjson`
+- `runtime-artifacts/integration/<run_id>/handoff-smoke-report.json`
+- `runtime-artifacts/integration/<run_id>/queue.from-planningops.json`
+- `runtime-artifacts/integration/<run_id>/scheduler-run-report.json`
+- `runtime-artifacts/integration/<run_id>/planningops-handoff-report.json`
+- `runtime-artifacts/integration/<run_id>/scheduler.ndjson`
+
+## Evidence Contracts
+- handoff evidence: `contracts/runtime-handoff-evidence.schema.json`
+- scheduler evidence: `contracts/runtime-scheduler-evidence.schema.json`
+- integration evidence: `contracts/runtime-integration-evidence.schema.json`
+- reason taxonomy: `config/runtime-reason-taxonomy.json`
 
 ## Healthy Signals
 - handoff mapping `mismatch_count == 0`
