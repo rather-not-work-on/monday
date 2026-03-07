@@ -3,21 +3,27 @@ name: Monday Local CI
 on:
   pull_request:
     paths:
+      - "config/**"
       - "contracts/**"
       - "fixtures/**"
       - "scripts/**"
       - "docs/runbook/**"
       - "README.md"
+      - "requirements-dev.txt"
+      - ".gitignore"
       - ".github/workflows/monday-local-ci.yml"
   push:
     branches:
       - main
     paths:
+      - "config/**"
       - "contracts/**"
       - "fixtures/**"
       - "scripts/**"
       - "docs/runbook/**"
       - "README.md"
+      - "requirements-dev.txt"
+      - ".gitignore"
       - ".github/workflows/monday-local-ci.yml"
   workflow_dispatch:
 
@@ -33,11 +39,19 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install dependencies
+        run: python3 -m pip install --upgrade pip && python3 -m pip install -r requirements-dev.txt
+
       - name: Validate handoff mapping smoke
         run: |
           mkdir -p /tmp/monday
           python3 scripts/validate_handoff_mapping.py \
+            --run-id "ci-${{ github.run_id }}-handoff" \
             --output /tmp/monday/handoff-smoke-report.json
+          python3 scripts/validate_runtime_evidence.py \
+            --kind handoff \
+            --report /tmp/monday/handoff-smoke-report.json \
+            --output /tmp/monday/handoff-validation-report.json
 
       - name: Run planningops handoff integration smoke
         run: |
@@ -50,6 +64,14 @@ jobs:
             --integration-report /tmp/monday/planningops-handoff-report.json \
             --idempotency /tmp/monday/idempotency.json \
             --transition-log /tmp/monday/scheduler.ndjson
+          python3 scripts/validate_runtime_evidence.py \
+            --kind scheduler \
+            --report /tmp/monday/scheduler-run-report.json \
+            --output /tmp/monday/scheduler-validation-report.json
+          python3 scripts/validate_runtime_evidence.py \
+            --kind integration \
+            --report /tmp/monday/planningops-handoff-report.json \
+            --output /tmp/monday/integration-validation-report.json
 
       - name: Validate contract pin
         run: |

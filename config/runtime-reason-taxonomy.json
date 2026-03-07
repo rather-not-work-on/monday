@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "reason_codes": {
+    "ok": "Runtime handoff and scheduler evidence completed without rollback conditions.",
+    "handoff_mapping_mismatch": "PlanningOps handoff packet could not be mapped cleanly into monday runtime input.",
+    "scheduler_no_dequeue": "Scheduler completed without dequeuing any runtime card.",
+    "scheduler_blocked_cards": "Scheduler reported unresolved dependency blocks.",
+    "duplicates_detected": "Scheduler idempotency prevented duplicate dequeue for at least one card.",
+    "blocked_dependencies": "Scheduler observed unresolved dependency edges but still produced valid evidence."
+  }
+}

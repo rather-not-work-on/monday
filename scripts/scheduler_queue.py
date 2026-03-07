@@ -6,11 +6,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 import sys
 
+from runtime_evidence_contract import load_json, validate_report
 
-def load_json(path: Path, default=None):
-    if not path.exists():
-        return default if default is not None else {}
-    return json.loads(path.read_text(encoding="utf-8"))
+
+DEFAULT_TAXONOMY = Path("config/runtime-reason-taxonomy.json")
+DEFAULT_SCHEMA = Path("contracts/runtime-scheduler-evidence.schema.json")
 
 
 def save_json(path: Path, data):
@@ -28,13 +28,23 @@ def now_utc():
     return datetime.now(timezone.utc).isoformat()
 
 
+def resolve_reason_code(dequeued_count: int, blocked_count: int, duplicate_count: int):
+    if dequeued_count == 0 and blocked_count == 0 and duplicate_count == 0:
+        return "scheduler_no_dequeue"
+    if blocked_count > 0:
+        return "blocked_dependencies"
+    if duplicate_count > 0:
+        return "duplicates_detected"
+    return "ok"
+
+
 def main():
     parser = argparse.ArgumentParser(description="Scheduler queue baseline")
     parser.add_argument("--queue", default="fixtures/queue.sample.json")
     parser.add_argument("--run-id", default=None)
-    parser.add_argument("--idempotency", default="artifacts/scheduler/idempotency.json")
-    parser.add_argument("--report", default="artifacts/scheduler/run-report.json")
-    parser.add_argument("--transition-log", default="artifacts/transition-log/scheduler.ndjson")
+    parser.add_argument("--idempotency", default="runtime-artifacts/scheduler/idempotency.json")
+    parser.add_argument("--report", default="runtime-artifacts/scheduler/run-report.json")
+    parser.add_argument("--transition-log", default="runtime-artifacts/transition-log/scheduler.ndjson")
     args = parser.parse_args()
 
     run_id = args.run_id or f"scheduler-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
@@ -45,6 +55,7 @@ def main():
 
     idem_doc = load_json(Path(args.idempotency), {"processed_card_ids": []})
     processed = set(idem_doc.get("processed_card_ids", []))
+    taxonomy = load_json(DEFAULT_TAXONOMY)
 
     dequeued = []
     blocked = []
@@ -115,26 +126,43 @@ def main():
 
     save_json(Path(args.idempotency), {"processed_card_ids": sorted(processed)})
 
+    reason_code = resolve_reason_code(len(dequeued), len(blocked), len(duplicates))
+    verdict = "pass" if reason_code != "scheduler_no_dequeue" else "fail"
+
     report = {
         "generated_at_utc": now_utc(),
         "run_id": run_id,
+        "verdict": verdict,
+        "reason_code": reason_code,
+        "reason_taxonomy_version": int(taxonomy.get("version", 0)),
         "dequeued_count": len(dequeued),
         "blocked_count": len(blocked),
         "duplicate_count": len(duplicates),
+        "replanning_trigger_count": len(replanning_triggered_cards),
         "dequeued": dequeued,
         "blocked": blocked,
         "duplicates": duplicates,
         "replanning_triggered_cards": replanning_triggered_cards,
     }
 
+    validate_report(report, DEFAULT_SCHEMA, DEFAULT_TAXONOMY)
+
     save_json(Path(args.report), report)
 
     print(f"report written: {args.report}")
     print(
-        f"dequeued={report['dequeued_count']} blocked={report['blocked_count']} duplicates={report['duplicate_count']} replanning={len(replanning_triggered_cards)}"
+        " ".join(
+            [
+                f"verdict={verdict}",
+                f"reason_code={reason_code}",
+                f"dequeued={report['dequeued_count']}",
+                f"blocked={report['blocked_count']}",
+                f"duplicates={report['duplicate_count']}",
+                f"replanning={len(replanning_triggered_cards)}",
+            ]
+        )
     )
-
-    return 0
+    return 0 if verdict == "pass" else 1
 
 
 if __name__ == "__main__":

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "monday-runtime-handoff-evidence",
+  "title": "Monday Runtime Handoff Evidence",
+  "type": "object",
+  "required": [
+    "generated_at_utc",
+    "run_id",
+    "verdict",
+    "reason_code",
+    "reason_taxonomy_version",
+    "mismatch_count",
+    "missing_in_map",
+    "missing_in_sample",
+    "missing_runtime_fields",
+    "runtime_input"
+  ],
+  "properties": {
+    "generated_at_utc": {"type": "string", "format": "date-time"},
+    "run_id": {"type": "string", "minLength": 1},
+    "verdict": {"type": "string", "enum": ["pass", "fail"]},
+    "reason_code": {"type": "string", "enum": ["ok", "handoff_mapping_mismatch"]},
+    "reason_taxonomy_version": {"type": "integer", "minimum": 1},
+    "mismatch_count": {"type": "integer", "minimum": 0},
+    "missing_in_map": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "missing_in_sample": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "missing_runtime_fields": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "runtime_input": {
+      "type": "object",
+      "additionalProperties": {
+        "type": ["string", "integer", "number", "boolean", "null"]
+      }
+    }
+  },
+  "additionalProperties": false
+}

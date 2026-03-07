@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "monday-runtime-integration-evidence",
+  "title": "Monday Runtime Integration Evidence",
+  "type": "object",
+  "required": [
+    "generated_at_utc",
+    "run_id",
+    "verdict",
+    "reason_code",
+    "reason_taxonomy_version",
+    "handoff_validation",
+    "scheduler_execution",
+    "rollback_trigger",
+    "queue_path"
+  ],
+  "properties": {
+    "generated_at_utc": {"type": "string", "format": "date-time"},
+    "run_id": {"type": "string", "minLength": 1},
+    "verdict": {"type": "string", "enum": ["pass", "fail"]},
+    "reason_code": {
+      "type": "string",
+      "enum": ["ok", "handoff_mapping_mismatch", "scheduler_no_dequeue", "scheduler_blocked_cards"]
+    },
+    "reason_taxonomy_version": {"type": "integer", "minimum": 1},
+    "handoff_validation": {
+      "type": "object",
+      "required": ["exit_code", "stdout", "stderr", "report_path", "mismatch_count"],
+      "properties": {
+        "exit_code": {"type": "integer"},
+        "stdout": {"type": "string"},
+        "stderr": {"type": "string"},
+        "report_path": {"type": "string", "minLength": 1},
+        "mismatch_count": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "scheduler_execution": {
+      "type": "object",
+      "required": [
+        "exit_code",
+        "stdout",
+        "stderr",
+        "report_path",
+        "dequeued_count",
+        "blocked_count",
+        "duplicate_count"
+      ],
+      "properties": {
+        "exit_code": {"type": "integer"},
+        "stdout": {"type": "string"},
+        "stderr": {"type": "string"},
+        "report_path": {"type": "string", "minLength": 1},
+        "dequeued_count": {"type": "integer", "minimum": 0},
+        "blocked_count": {"type": "integer", "minimum": 0},
+        "duplicate_count": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "rollback_trigger": {
+      "type": "object",
+      "required": ["triggered", "reasons", "policy"],
+      "properties": {
+        "triggered": {"type": "boolean"},
+        "reasons": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "policy": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "queue_path": {"type": "string", "minLength": 1}
+  },
+  "additionalProperties": false
+}

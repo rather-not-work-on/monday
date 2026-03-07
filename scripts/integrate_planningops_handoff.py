@@ -7,6 +7,11 @@ from pathlib import Path
 import subprocess
 import sys
 
+from runtime_evidence_contract import load_json, validate_report
+
+
+DEFAULT_TAXONOMY = Path("config/runtime-reason-taxonomy.json")
+DEFAULT_SCHEMA = Path("contracts/runtime-integration-evidence.schema.json")
 
 def now_utc():
     return datetime.now(timezone.utc).isoformat()
@@ -15,12 +20,6 @@ def now_utc():
 def run_cmd(cmd):
     completed = subprocess.run(cmd, capture_output=True, text=True)
     return completed.returncode, completed.stdout.strip(), completed.stderr.strip()
-
-
-def load_json(path: Path, default=None):
-    if not path.exists():
-        return default
-    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def save_json(path: Path, data):
@@ -49,6 +48,10 @@ def build_handoff(last_run: dict, fallback_handoff: dict):
     }
 
 
+def default_integration_path(run_id: str, filename: str) -> str:
+    return f"runtime-artifacts/integration/{run_id}/{filename}"
+
+
 def main():
     parser = argparse.ArgumentParser(description="Integrate planningops handoff with monday scheduler runner")
     parser.add_argument(
@@ -56,25 +59,35 @@ def main():
         default="../platform-planningops/planningops/artifacts/loop-runner/last-run.json",
     )
     parser.add_argument("--handoff-sample", default="fixtures/handoff-packet.sample.json")
-    parser.add_argument("--queue-out", default="artifacts/integration/queue.from-planningops.json")
-    parser.add_argument("--handoff-report", default="artifacts/integration/handoff-smoke-report.json")
-    parser.add_argument("--scheduler-report", default="artifacts/integration/scheduler-run-report.json")
-    parser.add_argument("--integration-report", default="artifacts/integration/planningops-handoff-report.json")
-    parser.add_argument("--idempotency", default="artifacts/integration/idempotency.json")
-    parser.add_argument("--transition-log", default="artifacts/integration/scheduler.ndjson")
+    parser.add_argument("--queue-out", default=None)
+    parser.add_argument("--handoff-report", default=None)
+    parser.add_argument("--scheduler-report", default=None)
+    parser.add_argument("--integration-report", default=None)
+    parser.add_argument("--idempotency", default=None)
+    parser.add_argument("--transition-log", default=None)
     parser.add_argument("--run-id", default=f"handoff-integration-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}")
     args = parser.parse_args()
+    taxonomy = load_json(DEFAULT_TAXONOMY)
+
+    queue_out = args.queue_out or default_integration_path(args.run_id, "queue.from-planningops.json")
+    handoff_report_path = args.handoff_report or default_integration_path(args.run_id, "handoff-smoke-report.json")
+    scheduler_report_path = args.scheduler_report or default_integration_path(args.run_id, "scheduler-run-report.json")
+    integration_report_path = args.integration_report or default_integration_path(args.run_id, "planningops-handoff-report.json")
+    idempotency_path = args.idempotency or default_integration_path(args.run_id, "idempotency.json")
+    transition_log_path = args.transition_log or default_integration_path(args.run_id, "scheduler.ndjson")
 
     # Step 1: validate handoff map
     rc_map, out_map, err_map = run_cmd(
         [
             "python3",
             "scripts/validate_handoff_mapping.py",
+            "--run-id",
+            args.run_id,
             "--output",
-            args.handoff_report,
+            handoff_report_path,
         ]
     )
-    handoff_report = load_json(Path(args.handoff_report), {})
+    handoff_report = load_json(Path(handoff_report_path), {})
 
     # Step 2: build handoff+queue from planningops run
     last_run = load_json(Path(args.planningops_last_run), {})
@@ -97,7 +110,7 @@ def main():
         ],
         "completed_issues": deps,
     }
-    save_json(Path(args.queue_out), queue_doc)
+    save_json(Path(queue_out), queue_doc)
 
     # Step 3: run scheduler on generated queue
     rc_sched, out_sched, err_sched = run_cmd(
@@ -105,18 +118,18 @@ def main():
             "python3",
             "scripts/scheduler_queue.py",
             "--queue",
-            args.queue_out,
+            queue_out,
             "--run-id",
             args.run_id,
             "--report",
-            args.scheduler_report,
+            scheduler_report_path,
             "--idempotency",
-            args.idempotency,
+            idempotency_path,
             "--transition-log",
-            args.transition_log,
+            transition_log_path,
         ]
     )
-    scheduler_report = load_json(Path(args.scheduler_report), {})
+    scheduler_report = load_json(Path(scheduler_report_path), {})
 
     mismatch_count = int(handoff_report.get("mismatch_count", 9999))
     dequeued_count = int(scheduler_report.get("dequeued_count", 0))
@@ -131,24 +144,27 @@ def main():
     if blocked_count > 0:
         rollback_reason.append("scheduler_blocked_cards")
 
+    reason_code = rollback_reason[0] if rollback_reason else "ok"
     verdict = "pass" if not rollback_triggered and rc_map == 0 and rc_sched == 0 else "fail"
 
     report = {
         "generated_at_utc": now_utc(),
         "run_id": args.run_id,
         "verdict": verdict,
+        "reason_code": reason_code,
+        "reason_taxonomy_version": int(taxonomy.get("version", 0)),
         "handoff_validation": {
             "exit_code": rc_map,
             "stdout": out_map[-1000:],
             "stderr": err_map[-1000:],
-            "report_path": args.handoff_report,
+            "report_path": handoff_report_path,
             "mismatch_count": mismatch_count,
         },
         "scheduler_execution": {
             "exit_code": rc_sched,
             "stdout": out_sched[-1000:],
             "stderr": err_sched[-1000:],
-            "report_path": args.scheduler_report,
+            "report_path": scheduler_report_path,
             "dequeued_count": dequeued_count,
             "blocked_count": blocked_count,
             "duplicate_count": int(scheduler_report.get("duplicate_count", 0)),
@@ -158,12 +174,16 @@ def main():
             "reasons": rollback_reason,
             "policy": "trigger when handoff mismatch exists, or no dequeue, or blocked cards > 0",
         },
-        "queue_path": args.queue_out,
+        "queue_path": queue_out,
     }
-    save_json(Path(args.integration_report), report)
 
-    print(f"integration report written: {args.integration_report}")
-    print(f"verdict={verdict} mismatch_count={mismatch_count} dequeued={dequeued_count} blocked={blocked_count}")
+    validate_report(report, DEFAULT_SCHEMA, DEFAULT_TAXONOMY)
+    save_json(Path(integration_report_path), report)
+
+    print(f"integration report written: {integration_report_path}")
+    print(
+        f"verdict={verdict} reason_code={reason_code} mismatch_count={mismatch_count} dequeued={dequeued_count} blocked={blocked_count}"
+    )
     return 0 if verdict == "pass" else 1
 
 
