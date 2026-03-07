@@ -2,29 +2,9 @@ name: Monday Local CI
 
 on:
   pull_request:
-    paths:
-      - "config/**"
-      - "contracts/**"
-      - "fixtures/**"
-      - "scripts/**"
-      - "docs/runbook/**"
-      - "README.md"
-      - "requirements-dev.txt"
-      - ".gitignore"
-      - ".github/workflows/monday-local-ci.yml"
   push:
     branches:
       - main
-    paths:
-      - "config/**"
-      - "contracts/**"
-      - "fixtures/**"
-      - "scripts/**"
-      - "docs/runbook/**"
-      - "README.md"
-      - "requirements-dev.txt"
-      - ".gitignore"
-      - ".github/workflows/monday-local-ci.yml"
   workflow_dispatch:
 
 jobs:
