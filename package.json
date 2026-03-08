@@ -1,0 +1,12 @@
+{
+  "name": "@rather-not-work-on/monday",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Workspace bootstrap for the monday runtime skeleton.",
+  "scripts": {
+    "typecheck": "pnpm -r exec tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

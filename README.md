@@ -28,6 +28,26 @@ Topology guide:
 - `docs/runbook/README.md`
 - `runtime-artifacts/README.md`
 
+## Workspace Bootstrap
+- `package.json`
+- `pnpm-workspace.yaml`
+- `tsconfig.base.json`
+
+The workspace bootstrap is intentionally thin in this step.
+
+- runtime package directories land in follow-up cards
+- current Python scripts remain the validation and smoke harness
+- local runtime outputs stay under `runtime-artifacts/`
+
+Current scaffolded runtime packages:
+- `packages/contract-bindings`
+- `packages/agent-kernel`
+- `packages/executor-ralph-loop`
+- `packages/orchestrator`
+- `packages/provider-client-adapter`
+- `packages/o11y-client-adapter`
+- `packages/messaging-adapter`
+
 ## Smoke Validation
 ```bash
 python3 scripts/validate_handoff_mapping.py

@@ -1,0 +1,11 @@
+{
+  "name": "@rather-not-work-on/orchestrator",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "@rather-not-work-on/agent-kernel": "workspace:*",
+    "@rather-not-work-on/contract-bindings": "workspace:*",
+    "@rather-not-work-on/executor-ralph-loop": "workspace:*"
+  }
+}
