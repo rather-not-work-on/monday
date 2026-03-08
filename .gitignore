@@ -1,6 +1,9 @@
 ._*
 **/._*
 __pycache__/
+node_modules/
+**/node_modules/
+*.tsbuildinfo
 runtime-artifacts/**
 !runtime-artifacts/
 !runtime-artifacts/README.md

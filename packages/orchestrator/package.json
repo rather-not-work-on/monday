@@ -7,5 +7,7 @@
     "@rather-not-work-on/agent-kernel": "workspace:*",
     "@rather-not-work-on/contract-bindings": "workspace:*",
     "@rather-not-work-on/executor-ralph-loop": "workspace:*"
-  }
+  },
+  "exports": "./src/index.ts",
+  "types": "./src/index.ts"
 }
