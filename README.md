@@ -19,6 +19,15 @@ Runtime surface for UAP Executor/Worker integration.
 - `scripts/validate_runtime_evidence.py`
 - `scripts/integrate_planningops_handoff.py`
 
+Topology guide:
+- `docs/repo-topology.md`
+- `contracts/README.md`
+- `config/README.md`
+- `scripts/README.md`
+- `docs/adr/README.md`
+- `docs/runbook/README.md`
+- `runtime-artifacts/README.md`
+
 ## Smoke Validation
 ```bash
 python3 scripts/validate_handoff_mapping.py
@@ -36,9 +45,12 @@ bash scripts/test_contract_pin_validation.sh
   - scheduler evidence validation
   - contract pin validation
   - seeded failure guard (`test_contract_pin_validation.sh`)
+  - topology/module README regression (`scripts/test_module_readmes.sh`)
 - remediation guide: `docs/runbook/planningops-handoff-scheduler-runbook.md#contract-pin-remediation`
 - evidence contracts:
   - `contracts/runtime-handoff-evidence.schema.json`
   - `contracts/runtime-scheduler-evidence.schema.json`
   - `contracts/runtime-integration-evidence.schema.json`
 - default local evidence root: `runtime-artifacts/` (gitignored)
+
+Generated local runtime outputs stay under `runtime-artifacts/` and remain gitignored except for the tracked module README.

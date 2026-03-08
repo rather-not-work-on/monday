@@ -1,5 +1,6 @@
 ._*
 **/._*
 __pycache__/
-
-runtime-artifacts/
+runtime-artifacts/**
+!runtime-artifacts/
+!runtime-artifacts/README.md
