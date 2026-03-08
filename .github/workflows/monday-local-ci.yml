@@ -3,10 +3,16 @@ name: Monday Local CI
 on:
   pull_request:
     paths:
+      - ".gitignore"
       - "README.md"
       - "docs/**"
       - "contracts/**"
       - "config/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "tsconfig.base.json"
+      - "packages/**"
       - "scripts/**"
       - "runtime-artifacts/README.md"
       - ".github/workflows/monday-local-ci.yml"
