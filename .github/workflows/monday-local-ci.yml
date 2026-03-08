@@ -2,6 +2,14 @@ name: Monday Local CI
 
 on:
   pull_request:
+    paths:
+      - "README.md"
+      - "docs/**"
+      - "contracts/**"
+      - "config/**"
+      - "scripts/**"
+      - "runtime-artifacts/README.md"
+      - ".github/workflows/monday-local-ci.yml"
   push:
     branches:
       - main
@@ -58,6 +66,9 @@ jobs:
           mkdir -p /tmp/monday
           python3 scripts/validate_contract_pin.py \
             --output /tmp/monday/contract-pin-report.json
+
+      - name: Verify topology README contract
+        run: bash scripts/test_module_readmes.sh
 
       - name: Seeded failure guard for contract pin
         run: bash scripts/test_contract_pin_validation.sh
