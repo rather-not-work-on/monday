@@ -1,0 +1,9 @@
+{
+  "name": "@rather-not-work-on/o11y-client-adapter",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "@rather-not-work-on/contract-bindings": "workspace:*"
+  }
+}
