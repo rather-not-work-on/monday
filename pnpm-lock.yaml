@@ -1,0 +1,68 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    devDependencies:
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+
+  packages/agent-kernel:
+    dependencies:
+      '@rather-not-work-on/contract-bindings':
+        specifier: workspace:*
+        version: link:../contract-bindings
+
+  packages/contract-bindings: {}
+
+  packages/executor-ralph-loop:
+    dependencies:
+      '@rather-not-work-on/contract-bindings':
+        specifier: workspace:*
+        version: link:../contract-bindings
+
+  packages/messaging-adapter:
+    dependencies:
+      '@rather-not-work-on/contract-bindings':
+        specifier: workspace:*
+        version: link:../contract-bindings
+
+  packages/o11y-client-adapter:
+    dependencies:
+      '@rather-not-work-on/contract-bindings':
+        specifier: workspace:*
+        version: link:../contract-bindings
+
+  packages/orchestrator:
+    dependencies:
+      '@rather-not-work-on/agent-kernel':
+        specifier: workspace:*
+        version: link:../agent-kernel
+      '@rather-not-work-on/contract-bindings':
+        specifier: workspace:*
+        version: link:../contract-bindings
+      '@rather-not-work-on/executor-ralph-loop':
+        specifier: workspace:*
+        version: link:../executor-ralph-loop
+
+  packages/provider-client-adapter:
+    dependencies:
+      '@rather-not-work-on/contract-bindings':
+        specifier: workspace:*
+        version: link:../contract-bindings
+
+packages:
+
+  typescript@5.9.3:
+    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
+snapshots:
+
+  typescript@5.9.3: {}

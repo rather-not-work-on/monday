@@ -5,5 +5,7 @@
   "type": "module",
   "dependencies": {
     "@rather-not-work-on/contract-bindings": "workspace:*"
-  }
+  },
+  "exports": "./src/index.ts",
+  "types": "./src/index.ts"
 }
