@@ -1,5 +1,15 @@
 import type { TelemetryEmitPort, TimelineEventEnvelope } from "@rather-not-work-on/contract-bindings";
 
+export interface TimelineEmitterProfile {
+  runtimeProfileName: string;
+  telemetryBaseUrl: string;
+  executionMode?: string;
+}
+
+export interface TimelineEmitterClientOptions {
+  profile?: TimelineEmitterProfile;
+}
+
 export function normalizeTimelineEvent(event: TimelineEventEnvelope): TimelineEventEnvelope {
   return {
     ...event,
@@ -13,11 +23,13 @@ export function normalizeTimelineEvent(event: TimelineEventEnvelope): TimelineEv
 }
 
 export class TimelineEmitterClient implements TelemetryEmitPort {
+  constructor(private readonly options: TimelineEmitterClientOptions = {}) {}
+
   emit(event: TimelineEventEnvelope): { delivered: boolean; eventName: string; runId: string } {
     const normalizedEvent = normalizeTimelineEvent(event);
 
     return {
-      delivered: normalizedEvent.runId.length > 0,
+      delivered: normalizedEvent.runId.length > 0 && (!this.options.profile || this.options.profile.telemetryBaseUrl.length > 0),
       eventName: normalizedEvent.eventName,
       runId: normalizedEvent.runId,
     };

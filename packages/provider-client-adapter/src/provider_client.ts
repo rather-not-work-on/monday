@@ -14,6 +14,16 @@ export interface ProviderRequestInput {
   fallbackProviderKeys?: string[];
 }
 
+export interface ProviderClientProfile {
+  runtimeProfileName: string;
+  providerBaseUrl: string;
+  executionMode?: string;
+}
+
+export interface ProviderClientOptions {
+  profile?: ProviderClientProfile;
+}
+
 function buildExecutionEnvelope(mission: MissionInput, handoff?: SubtaskHandoff): TaskExecutionEnvelope {
   return {
     runId: handoff ? handoff.handoffId : `${mission.missionId}:root`,
@@ -42,12 +52,14 @@ export function buildProviderRequest(input: ProviderRequestInput): ProviderInvoc
 }
 
 export class ProviderClient implements ProviderInvocationPort {
+  constructor(private readonly options: ProviderClientOptions = {}) {}
+
   invoke(request: ProviderInvocationRequest): ProviderInvocationOutcome {
     const providerKey = request.preferredProviderKey ?? request.fallbackProviderKeys?.[0];
 
     return {
       resultType: "complete",
-      reasonCode: "provider_client_stubbed",
+      reasonCode: this.options.profile ? "provider_client_profiled" : "provider_client_stubbed",
       providerKey,
       outputText: request.prompt,
     };
