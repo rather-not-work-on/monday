@@ -7,3 +7,5 @@ Coordinate coarse runtime flow across kernel and executor.
 - derive run status through the local run lifecycle helper instead of inline conditionals
 - compose provider, telemetry, and messaging adapters without redefining their payloads
 - do not inspect executor internals beyond shared types
+
+- extract default executor dependencies into a local factory instead of constructing adapters inline
