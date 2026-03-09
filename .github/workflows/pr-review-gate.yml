@@ -1,0 +1,50 @@
+name: pr-review-gate
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+jobs:
+  template-and-link-check:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR description structure
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = (context.payload.pull_request.body || "").trim();
+            const requiredSections = [
+              "## Summary",
+              "## Scope",
+              "## Linked Issues",
+              "## Validation",
+              "## Risks",
+              "## Review Checklist",
+            ];
+
+            const missing = requiredSections.filter((section) => !body.includes(section));
+            const hasPlanningOpsRef =
+              /rather-not-work-on\/platform-planningops#\d+|https:\/\/github\.com\/rather-not-work-on\/platform-planningops\/issues\/\d+/i.test(
+                body
+              );
+
+            if (!hasPlanningOpsRef) {
+              missing.push(
+                "repo-qualified PlanningOps issue reference (`rather-not-work-on/platform-planningops#123` or issue URL)"
+              );
+            }
+
+            if (missing.length > 0) {
+              core.setFailed(
+                [
+                  "PR body is missing required content:",
+                  ...missing.map((item) => `- ${item}`),
+                  "",
+                  "Use `.github/pull_request_template.md`.",
+                ].join("\n")
+              );
+              return;
+            }
+
+            core.notice("PR body structure validation passed.");
