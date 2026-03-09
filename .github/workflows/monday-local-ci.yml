@@ -33,8 +33,17 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
       - name: Install dependencies
-        run: python3 -m pip install --upgrade pip && python3 -m pip install -r requirements-dev.txt
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements-dev.txt
+          npm install -g pnpm@10
+          pnpm install --frozen-lockfile
 
       - name: Validate handoff mapping smoke
         run: |
@@ -75,6 +84,9 @@ jobs:
 
       - name: Verify topology README contract
         run: bash scripts/test_module_readmes.sh
+
+      - name: Verify mission-file local runtime smoke contract
+        run: bash scripts/test_local_runtime_smoke_mission_file.sh
 
       - name: Seeded failure guard for contract pin
         run: bash scripts/test_contract_pin_validation.sh

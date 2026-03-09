@@ -14,6 +14,30 @@ def now_utc():
     return datetime.now(timezone.utc).isoformat()
 
 
+def load_mission_input(repo_root: Path, mission_file: str | None, mission_id: str, objective: str) -> tuple[dict, str, str | None]:
+    if not mission_file:
+        return {"missionId": mission_id, "objective": objective}, "cli", None
+
+    mission_path = Path(mission_file)
+    if not mission_path.is_absolute():
+        mission_path = (repo_root / mission_path).resolve()
+    if not mission_path.exists():
+        raise SystemExit(f"mission file not found: {mission_path}")
+
+    doc = json.loads(mission_path.read_text(encoding="utf-8"))
+    if not isinstance(doc, dict):
+        raise SystemExit("mission file must contain a JSON object")
+
+    mission_id_value = str(doc.get("missionId") or "").strip()
+    objective_value = str(doc.get("objective") or "").strip()
+    if not mission_id_value:
+        raise SystemExit("mission file missing missionId")
+    if not objective_value:
+        raise SystemExit("mission file missing objective")
+
+    return {"missionId": mission_id_value, "objective": objective_value}, "mission_file", str(mission_path)
+
+
 def build_ts_smoke_source(runtime_profile_file: Path, profile_name: str, mission_id: str, objective: str) -> str:
     profile_arg = json.dumps(profile_name)
     runtime_profile_arg = json.dumps(str(runtime_profile_file))
@@ -99,6 +123,11 @@ def main():
         help="Mission objective used for the smoke run",
     )
     parser.add_argument(
+        "--mission-file",
+        default=None,
+        help="Optional JSON file containing missionId/objective. When present it overrides --mission-id and --objective.",
+    )
+    parser.add_argument(
         "--run-id",
         default=f"local-runtime-smoke-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
         help="Smoke run id used for evidence output",
@@ -115,7 +144,15 @@ def main():
     if not runtime_profile_file.exists():
         raise SystemExit(f"runtime profile file not found: {runtime_profile_file}")
 
-    completed, ts_command = run_ts_smoke(repo_root, runtime_profile_file, args.profile, args.mission_id, args.objective)
+    mission, mission_source, mission_file = load_mission_input(repo_root, args.mission_file, args.mission_id, args.objective)
+
+    completed, ts_command = run_ts_smoke(
+        repo_root,
+        runtime_profile_file,
+        args.profile,
+        mission["missionId"],
+        mission["objective"],
+    )
     errors = []
     warnings = []
     payload = {}
@@ -145,8 +182,11 @@ def main():
         "generated_at_utc": now_utc(),
         "run_id": args.run_id,
         "runtime_profile_file": str(runtime_profile_file),
+        "mission_source": mission_source,
+        "mission_file": mission_file,
+        "requested_mission": mission,
         "runtime_profile": payload.get("runtimeProfile"),
-        "mission": payload.get("mission"),
+        "mission": payload.get("mission") or mission,
         "task_plan": payload.get("taskPlan"),
         "handoff": payload.get("handoff"),
         "executor_outcome": payload.get("outcome"),
