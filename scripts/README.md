@@ -7,6 +7,7 @@ Host repeatable runtime handoff, scheduler, and validation tooling.
 - handoff mapping validation
 - runtime evidence validation
 - planningops integration smoke
+- local runtime smoke entrypoint
 - scheduler queue tests
 
 ## Rules
