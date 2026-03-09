@@ -73,4 +73,10 @@ bash scripts/test_contract_pin_validation.sh
   - `contracts/runtime-integration-evidence.schema.json`
 - default local evidence root: `runtime-artifacts/` (gitignored)
 
+## PR Hygiene
+- template: `.github/pull_request_template.md`
+- review gate: `.github/workflows/pr-review-gate.yml`
+- external repo PRs must include a repo-qualified planningops issue ref
+- example: `Closes rather-not-work-on/platform-planningops#207`
+
 Generated local runtime outputs stay under `runtime-artifacts/` and remain gitignored except for the tracked module README.
