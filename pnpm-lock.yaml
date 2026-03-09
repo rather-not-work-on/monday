@@ -25,6 +25,9 @@ importers:
       '@rather-not-work-on/contract-bindings':
         specifier: workspace:*
         version: link:../contract-bindings
+      '@rather-not-work-on/provider-client-adapter':
+        specifier: workspace:*
+        version: link:../provider-client-adapter
 
   packages/messaging-adapter:
     dependencies:

@@ -26,6 +26,14 @@ function buildEventDetail(mission: MissionInput, handoff?: SubtaskHandoff): stri
   return `mission:${mission.missionId}:task:${handoff.taskId}`;
 }
 
+function resolveReasonCode(result: ExecutorResult): string | undefined {
+  if ("reasonCode" in result && typeof result.reasonCode === "string") {
+    return result.reasonCode;
+  }
+
+  return undefined;
+}
+
 export function buildExecutorEvent(
   mission: MissionInput,
   result: ExecutorResult,
@@ -33,7 +41,13 @@ export function buildExecutorEvent(
 ): TimelineEventEnvelope {
   return {
     runId: handoff ? handoff.handoffId : `${mission.missionId}:root`,
+    missionId: mission.missionId,
     eventName: resolveEventName(result),
     detail: buildEventDetail(mission, handoff),
+    taskId: handoff?.taskId,
+    handoffId: handoff?.handoffId,
+    source: "executor",
+    resultType: result.resultType,
+    reasonCode: resolveReasonCode(result),
   };
 }

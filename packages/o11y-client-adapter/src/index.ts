@@ -1,1 +1,1 @@
-export { TimelineEmitterClient } from "./timeline_emitter_client.js";
+export { normalizeTimelineEvent, TimelineEmitterClient } from "./timeline_emitter_client.js";
