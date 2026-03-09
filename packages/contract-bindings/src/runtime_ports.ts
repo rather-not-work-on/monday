@@ -8,11 +8,16 @@ export interface TaskExecutionEnvelope {
 
 export interface ProviderInvocationRequest {
   envelope: TaskExecutionEnvelope;
+  prompt: string;
+  preferredProviderKey?: string;
+  fallbackProviderKeys?: string[];
 }
 
 export interface ProviderInvocationOutcome {
   resultType: "complete" | "partial" | "failed" | "canceled";
   reasonCode?: string;
+  providerKey?: string;
+  outputText?: string;
 }
 
 export interface ProviderInvocationPort {
@@ -21,8 +26,14 @@ export interface ProviderInvocationPort {
 
 export interface TimelineEventEnvelope {
   runId: string;
+  missionId: string;
   eventName: string;
   detail?: string;
+  taskId?: string;
+  handoffId?: string;
+  source?: "executor" | "orchestrator";
+  resultType?: "complete" | "partial" | "failed" | "canceled";
+  reasonCode?: string;
 }
 
 export interface TelemetryEmitPort {

@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "dependencies": {
-    "@rather-not-work-on/contract-bindings": "workspace:*"
+    "@rather-not-work-on/contract-bindings": "workspace:*",
+    "@rather-not-work-on/provider-client-adapter": "workspace:*"
   },
   "exports": "./src/index.ts",
   "types": "./src/index.ts"
