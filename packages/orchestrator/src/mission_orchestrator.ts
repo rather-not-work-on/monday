@@ -6,6 +6,7 @@ import { TimelineEmitterClient } from "@rather-not-work-on/o11y-client-adapter";
 import { ProviderClient } from "@rather-not-work-on/provider-client-adapter";
 
 import type { MissionOrchestratorDependencies } from "./orchestrator_ports.js";
+import { buildRunRef } from "./run_lifecycle.js";
 
 export class MissionOrchestrator {
   private readonly dependencies: MissionOrchestratorDependencies;
@@ -26,10 +27,8 @@ export class MissionOrchestrator {
   createRun(mission: MissionInput): RunRef {
     const plan = this.dependencies.planner.plan(mission);
     const outcome = this.dependencies.executor.execute(mission);
+    const runId = `${mission.missionId}:${plan.tasks.length}`;
 
-    return {
-      runId: `${mission.missionId}:${plan.tasks.length}`,
-      status: outcome.resultType === "failed" ? "blocked" : "queued",
-    };
+    return buildRunRef(runId, outcome);
   }
 }
