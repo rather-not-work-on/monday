@@ -5,6 +5,8 @@ import type {
   SubtaskHandoff,
 } from "@rather-not-work-on/contract-bindings";
 
+import { buildExecutorEvent } from "./event_policy.js";
+
 export class RalphLoopExecutor {
   constructor(private readonly dependencies: ExecutorLoopDependencies) {}
 
@@ -20,11 +22,7 @@ export class RalphLoopExecutor {
       },
     });
 
-    this.dependencies.telemetry?.emit({
-      runId,
-      eventName: "executor.invoked",
-      detail: providerOutcome.resultType,
-    });
+    this.dependencies.telemetry?.emit(buildExecutorEvent(context, providerOutcome, handoff));
 
     this.dependencies.messaging?.acknowledge(runId);
 
