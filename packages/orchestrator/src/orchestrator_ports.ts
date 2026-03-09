@@ -1,11 +1,11 @@
-import type { ExecutorResult, MissionInput, TaskPlan } from "@rather-not-work-on/contract-bindings";
+import type { ExecutorResult, MissionInput, SubtaskHandoff, TaskPlan } from "@rather-not-work-on/contract-bindings";
 
 export interface MissionPlannerPort {
   plan(mission: MissionInput): TaskPlan;
 }
 
 export interface MissionExecutorPort {
-  execute(context: MissionInput): ExecutorResult;
+  execute(context: MissionInput, handoff?: SubtaskHandoff): ExecutorResult;
 }
 
 export interface MissionOrchestratorDependencies {
