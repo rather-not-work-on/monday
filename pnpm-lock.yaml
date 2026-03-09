@@ -49,6 +49,15 @@ importers:
       '@rather-not-work-on/executor-ralph-loop':
         specifier: workspace:*
         version: link:../executor-ralph-loop
+      '@rather-not-work-on/messaging-adapter':
+        specifier: workspace:*
+        version: link:../messaging-adapter
+      '@rather-not-work-on/o11y-client-adapter':
+        specifier: workspace:*
+        version: link:../o11y-client-adapter
+      '@rather-not-work-on/provider-client-adapter':
+        specifier: workspace:*
+        version: link:../provider-client-adapter
 
   packages/provider-client-adapter:
     dependencies:
