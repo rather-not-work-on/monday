@@ -1,4 +1,4 @@
-import { SubtaskDelegator } from "@rather-not-work-on/agent-kernel";
+import { buildHandoffPlan, SubtaskDelegator } from "@rather-not-work-on/agent-kernel";
 import type { MissionInput, RunRef } from "@rather-not-work-on/contract-bindings";
 import { RalphLoopExecutor } from "@rather-not-work-on/executor-ralph-loop";
 import { MessagingAdapter } from "@rather-not-work-on/messaging-adapter";
@@ -26,8 +26,10 @@ export class MissionOrchestrator {
 
   createRun(mission: MissionInput): RunRef {
     const plan = this.dependencies.planner.plan(mission);
-    const outcome = this.dependencies.executor.execute(mission);
-    const runId = `${mission.missionId}:${plan.tasks.length}`;
+    const handoffs = buildHandoffPlan(mission, plan);
+    const primaryHandoff = handoffs[0];
+    const outcome = this.dependencies.executor.execute(mission, primaryHandoff);
+    const runId = primaryHandoff?.handoffId ?? `${mission.missionId}:root`;
 
     return buildRunRef(runId, outcome);
   }
