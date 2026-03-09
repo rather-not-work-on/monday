@@ -1,7 +1,11 @@
-import type { ExecutorResult, MissionInput } from "@rather-not-work-on/contract-bindings";
+import type {
+  ProviderInvocationOutcome,
+  ProviderInvocationPort,
+  ProviderInvocationRequest,
+} from "@rather-not-work-on/contract-bindings";
 
-export class ProviderClient {
-  invoke(_request: MissionInput): ExecutorResult {
+export class ProviderClient implements ProviderInvocationPort {
+  invoke(_request: ProviderInvocationRequest): ProviderInvocationOutcome {
     return {
       resultType: "complete",
     };
