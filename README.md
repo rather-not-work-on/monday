@@ -11,13 +11,17 @@ Runtime surface for UAP Executor/Worker integration.
 ## Key Files
 - `docs/adr/adr-0001-executor-worker-naming.md`
 - `docs/runbook/planningops-handoff-scheduler-runbook.md`
+- `docs/runbook/runtime-integration-runbook.md`
 - `contracts/handoff-required-fields.json`
 - `contracts/executor-worker-handoff-map.json`
 - `contracts/runtime-*-evidence.schema.json`
 - `config/runtime-reason-taxonomy.json`
+- `config/runtime-integration-runbook-contract.json`
 - `scripts/validate_handoff_mapping.py`
 - `scripts/validate_runtime_evidence.py`
 - `scripts/integrate_planningops_handoff.py`
+- `scripts/validate_runtime_integration_runbook.py`
+- `scripts/test_runtime_guardrails.sh`
 
 Topology guide:
 - `docs/repo-topology.md`
@@ -53,6 +57,7 @@ Current scaffolded runtime packages:
 python3 scripts/validate_handoff_mapping.py
 python3 scripts/integrate_planningops_handoff.py --run-id handoff-integration-local
 bash scripts/test_scheduler_queue.sh
+bash scripts/test_runtime_guardrails.sh
 python3 scripts/validate_contract_pin.py
 bash scripts/test_contract_pin_validation.sh
 ```
@@ -67,6 +72,7 @@ bash scripts/test_contract_pin_validation.sh
   - seeded failure guard (`test_contract_pin_validation.sh`)
   - topology/module README regression (`scripts/test_module_readmes.sh`)
 - remediation guide: `docs/runbook/planningops-handoff-scheduler-runbook.md#contract-pin-remediation`
+- runtime integration replay guide: `docs/runbook/runtime-integration-runbook.md`
 - evidence contracts:
   - `contracts/runtime-handoff-evidence.schema.json`
   - `contracts/runtime-scheduler-evidence.schema.json`

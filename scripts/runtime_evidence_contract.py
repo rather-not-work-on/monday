@@ -3,7 +3,10 @@
 import json
 from pathlib import Path
 
-from jsonschema import Draft202012Validator, FormatChecker
+from jsonschema_compat import load_validator_exports
+
+
+Draft202012Validator, FormatChecker, _SchemaError = load_validator_exports()
 
 
 def load_json(path: Path, default=None):

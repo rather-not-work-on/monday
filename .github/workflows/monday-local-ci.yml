@@ -88,5 +88,8 @@ jobs:
       - name: Verify mission-file local runtime smoke contract
         run: bash scripts/test_local_runtime_smoke_mission_file.sh
 
+      - name: Verify runtime integration guardrails
+        run: bash scripts/test_runtime_guardrails.sh
+
       - name: Seeded failure guard for contract pin
         run: bash scripts/test_contract_pin_validation.sh
