@@ -5,6 +5,7 @@ Keep operator-facing runtime usage and remediation guidance.
 
 ## Contents
 - handoff and scheduler runbooks
+- runtime integration and replay runbook
 - contract pin remediation notes
 
 ## Rules

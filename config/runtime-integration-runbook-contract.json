@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "runbook_path": "docs/runbook/runtime-integration-runbook.md",
+  "required_sections": [
+    "Goal",
+    "Contract Inputs",
+    "Command (Single Integration Run)",
+    "Replay Pass Check",
+    "Generated Artifacts",
+    "Healthy Signals",
+    "Rollback Trigger"
+  ],
+  "required_fragments": [
+    "python3 scripts/integrate_planningops_handoff.py",
+    "python3 scripts/validate_runtime_evidence.py",
+    "python3 scripts/scheduler_queue.py",
+    "reason_code=duplicates_detected",
+    "duplicate_count >= 1"
+  ],
+  "required_artifacts": [
+    "$OUT_DIR/handoff-smoke-report.json",
+    "$OUT_DIR/queue.from-planningops.json",
+    "$OUT_DIR/scheduler-run-report.json",
+    "$OUT_DIR/planningops-handoff-report.json",
+    "$OUT_DIR/scheduler-replay-report.json",
+    "$OUT_DIR/scheduler.ndjson"
+  ]
+}
