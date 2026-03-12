@@ -81,12 +81,35 @@ console.log(
 
 
 def run_ts_smoke(repo_root: Path, runtime_profile_file: Path, profile_name: str, mission_id: str, objective: str):
-    def resolve_tsx_command(temp_path: Path) -> list[str]:
+    def node_supports_strip_types() -> bool:
+        probe = subprocess.run(
+            ["node", "--experimental-strip-types", "-e", "console.log('ok')"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+        )
+        return probe.returncode == 0
+
+    def bun_available() -> bool:
+        try:
+            probe = subprocess.run(["bun", "--version"], cwd=repo_root, capture_output=True, text=True)
+        except FileNotFoundError:
+            return False
+        return probe.returncode == 0
+
+    def resolve_tsx_commands(temp_path: Path) -> list[list[str]]:
         local_name = "tsx.cmd" if os.name == "nt" else "tsx"
         local_tsx = repo_root / "node_modules" / ".bin" / local_name
         if local_tsx.exists():
-            return [str(local_tsx), str(temp_path)]
-        return ["npx", "--yes", "tsx", str(temp_path)]
+            return [[str(local_tsx), str(temp_path)]]
+
+        commands: list[list[str]] = []
+        if node_supports_strip_types():
+            commands.append(["node", "--experimental-strip-types", str(temp_path)])
+        if bun_available():
+            commands.append(["bun", str(temp_path)])
+        commands.append(["npx", "--yes", "tsx", str(temp_path)])
+        return commands
 
     temp_dir = repo_root / "runtime-artifacts" / "tmp"
     temp_dir.mkdir(parents=True, exist_ok=True)
@@ -94,9 +117,15 @@ def run_ts_smoke(repo_root: Path, runtime_profile_file: Path, profile_name: str,
         temp_path = Path(handle.name)
         handle.write(build_ts_smoke_source(runtime_profile_file, profile_name, mission_id, objective))
 
-    command = resolve_tsx_command(temp_path)
+    commands = resolve_tsx_commands(temp_path)
+    command: list[str] = commands[0]
     try:
         completed = subprocess.run(command, cwd=repo_root, capture_output=True, text=True)
+        for candidate in commands[1:]:
+            if completed.returncode == 0:
+                break
+            command = candidate
+            completed = subprocess.run(command, cwd=repo_root, capture_output=True, text=True)
     finally:
         temp_path.unlink(missing_ok=True)
 
