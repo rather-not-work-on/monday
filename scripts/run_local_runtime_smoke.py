@@ -91,7 +91,10 @@ def run_ts_smoke(repo_root: Path, runtime_profile_file: Path, profile_name: str,
         return probe.returncode == 0
 
     def bun_available() -> bool:
-        probe = subprocess.run(["bun", "--version"], cwd=repo_root, capture_output=True, text=True)
+        try:
+            probe = subprocess.run(["bun", "--version"], cwd=repo_root, capture_output=True, text=True)
+        except FileNotFoundError:
+            return False
         return probe.returncode == 0
 
     def resolve_tsx_commands(temp_path: Path) -> list[list[str]]:
