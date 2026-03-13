@@ -7,8 +7,17 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 
 RUN_ID="runtime-guard-$(date -u +%Y%m%dT%H%M%SZ)"
 
-python3 "$ROOT_DIR/scripts/validate_runtime_integration_runbook.py" \
+python3 "$ROOT_DIR/scripts/validate_runbook_contract.py" \
+  --contract "$ROOT_DIR/config/runtime-integration-runbook-contract.json" \
   --output "$TMP_DIR/runtime-integration-runbook-validation.json"
+
+python3 "$ROOT_DIR/scripts/validate_runbook_contract.py" \
+  --contract "$ROOT_DIR/config/goal-completion-notifier-runbook-contract.json" \
+  --output "$TMP_DIR/goal-completion-notifier-runbook-validation.json"
+
+python3 "$ROOT_DIR/scripts/validate_runbook_contract.py" \
+  --contract "$ROOT_DIR/config/operator-channel-adapter-runbook-contract.json" \
+  --output "$TMP_DIR/operator-channel-adapter-runbook-validation.json"
 
 python3 "$ROOT_DIR/scripts/integrate_planningops_handoff.py" \
   --run-id "$RUN_ID" \

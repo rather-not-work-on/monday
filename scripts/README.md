@@ -9,6 +9,7 @@ Host repeatable runtime handoff, scheduler, and validation tooling.
 - planningops integration smoke
 - local runtime smoke entrypoint
 - operator channel delivery CLI baselines
+- generic runbook contract validation
 - scheduler queue tests
 - runtime integration runbook validation
 - runtime integration guardrail regression

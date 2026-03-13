@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "runbook_path": "docs/runbook/goal-completion-notifier.md",
+  "required_sections": [
+    "Goal",
+    "Contract Inputs",
+    "Command (Dry Run)",
+    "Command (Apply Gate)",
+    "Generated Artifacts",
+    "Healthy Signals",
+    "Rollback Trigger"
+  ],
+  "required_fragments": [
+    "scripts/send_goal_completion_notification.py",
+    "goal_completed",
+    "email_cli",
+    "email_mcp",
+    "goal_completion_transport_not_configured"
+  ],
+  "required_artifacts": [
+    "goal-completion-notification-report.json",
+    "goal-completion-notification-apply-report.json"
+  ]
+}
