@@ -27,4 +27,5 @@ export interface ExecutorResult {
   resultType: ResultType;
 }
 
+export * from "./operator_channels.js";
 export * from "./runtime_ports.js";
