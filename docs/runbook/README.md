@@ -6,6 +6,8 @@ Keep operator-facing runtime usage and remediation guidance.
 ## Contents
 - handoff and scheduler runbooks
 - runtime integration and replay runbook
+- goal completion notification baseline
+- operator channel adapter baseline and skill boundary
 - contract pin remediation notes
 
 ## Rules

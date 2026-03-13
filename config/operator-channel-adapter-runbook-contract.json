@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "runbook_path": "docs/runbook/operator-channel-adapter.md",
+  "required_sections": [
+    "Goal",
+    "Contract Inputs",
+    "Command (Dry Run)",
+    "Command (Apply Gate)",
+    "Skill Boundary",
+    "Generated Artifacts",
+    "Healthy Signals",
+    "Rollback Trigger"
+  ],
+  "required_fragments": [
+    "scripts/send_operator_message.py",
+    "slack_skill_cli",
+    "slack_skill_mcp",
+    "operator_transport_not_configured"
+  ],
+  "required_artifacts": [
+    "operator-message-report.json",
+    "operator-message-apply-report.json"
+  ]
+}
