@@ -29,7 +29,9 @@ Runtime surface for UAP Executor/Worker integration.
 - `scripts/integrate_planningops_handoff.py`
 - `scripts/validate_runbook_contract.py`
 - `scripts/validate_runtime_integration_runbook.py`
+- `scripts/run_scheduled_queue_cycle.py`
 - `scripts/test_runtime_guardrails.sh`
+- `scripts/test_run_scheduled_queue_cycle.sh`
 - `scripts/send_supervisor_status_update.py`
 - `scripts/send_supervisor_goal_completion.py`
 
@@ -67,6 +69,7 @@ Current scaffolded runtime packages:
 ```bash
 python3 scripts/validate_handoff_mapping.py
 python3 scripts/integrate_planningops_handoff.py --run-id handoff-integration-local
+bash scripts/test_run_scheduled_queue_cycle.sh
 bash scripts/test_scheduler_queue.sh
 bash scripts/test_runtime_guardrails.sh
 python3 scripts/validate_contract_pin.py

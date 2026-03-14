@@ -116,7 +116,7 @@ def main():
     rc_sched, out_sched, err_sched = run_cmd(
         [
             "python3",
-            "scripts/scheduler_queue.py",
+            "scripts/run_scheduled_queue_cycle.py",
             "--queue",
             queue_out,
             "--run-id",

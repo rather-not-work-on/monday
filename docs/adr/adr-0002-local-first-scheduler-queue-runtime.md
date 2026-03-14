@@ -1,88 +1,46 @@
 # ADR-0002: Local-First Scheduler Queue Runtime
 
-- Status: Accepted
-- Date: 2026-03-14
-- Owner: @JJBINY
-- Related issue: platform-planningops#324
+## Status
+Accepted
+
+## Date
+2026-03-14
+
+## Context
+Goal-driven autonomy wave4 moves scheduler runtime ownership to `monday` while `platform-planningops` remains the control tower for goal, admission, retry, escalation, and completion policy.
+
+The runtime entrypoint must support the shared queue-item policy contract from `platform-contracts` and remain compatible with existing scheduler evidence validation already used by local guardrails.
 
 ## Decision
-- `monday` owns the scheduler and queue runtime.
-- The first durable queue backend is local-first SQLite.
-- The first scheduler entrypoint is a repo-owned CLI: `scripts/run_scheduled_queue_cycle.py`.
-- `planningops` remains policy and evidence control plane only.
+`monday` adopts a local-first scheduler queue runtime topology:
 
-## Boundary Rule
-- `planningops` may define:
-  - goal briefs
-  - active-goal registry
-  - execution contracts
-  - queue admission and retry policy
-  - reflection and completion policy
-- `monday` must own:
-  - queue persistence
-  - lease and heartbeat handling
-  - dequeue and dispatch
-  - retry wait and dead-letter execution
-  - operator-channel delivery adapters
+1. Queue cycle entrypoint: `scripts/run_scheduled_queue_cycle.py`.
+2. Shared queue policy shape: `platform-contracts/schemas/runtime-scheduler-queue-item.schema.json`.
+3. Idempotency store: local JSON state under `runtime-artifacts/scheduler-cycle/`.
+4. Transition log: append-only NDJSON under `runtime-artifacts/transition-log/`.
+5. Scheduler report contract: `contracts/runtime-scheduler-evidence.schema.json`.
 
-`planningops` must not host the scheduler daemon or queue backend.
+The queue cycle accepts both:
+- Wave4 queue-item docs (`queue_items` + `completed_queue_item_ids`) validated against shared schema.
+- Legacy queue docs (`items` + `completed_issues`) to keep current integration smoke stable while migration is in progress.
 
-## Runtime Topology
+## Ownership Boundary
+- `platform-planningops`: policy generation, active-goal truth, and completion decisions.
+- `platform-contracts`: shared queue item schema.
+- `monday`: queue runtime execution, idempotent dequeue, dependency gating, transition evidence.
 
-### Entry Surface
-- `scripts/run_scheduled_queue_cycle.py`
-  - local-first scheduler cycle entrypoint
-  - reads queue policy and queue items
-  - advances queue state
-  - emits deterministic evidence
-
-### Baseline Runtime Store
-- initial persistence stays in repo-local SQLite under monday-owned runtime paths
-- baseline helper modules may live in `scripts/` while the runtime is still CLI-first
-- storage shape must remain replayable and migration-friendly
-
-### Existing Package Responsibilities
-- `packages/orchestrator`
-  - lift queue-ready work into runtime handoff inputs
-  - must not own persistence or lease storage
-- `packages/agent-kernel`
-  - keep mission decomposition and deterministic handoff construction
-  - must not inspect queue storage directly
-- `packages/executor-ralph-loop`
-  - remain the execution boundary for loop work
-  - must consume leased work through typed inputs, not direct queue mutation
-- `packages/messaging-adapter`
-  - remain the delivery surface for operator status and terminal completion
-
-### Deferred Package Growth
-Future extraction is allowed only if the baseline CLI becomes too large.
-Candidate extractions:
-- queue store helper
-- lease manager helper
-- scheduler cycle composition helper
-
-These are refactors, not prerequisites for the first durable runtime.
-
-## State Model
-The canonical scheduler state vocabulary is:
-- `scheduled`
-- `ready`
-- `leased`
-- `running`
-- `blocked`
-- `retry_wait`
-- `dead_letter`
-- `completed`
-
-Monday owns runtime transitions between those states.
-
-## Storage Rule
-- default backend: SQLite
-- default operation mode: local-first single-node execution
-- state and logs must be easy to inspect on disk during debugging
-- migration to external storage must preserve the same queue semantics and evidence shape
+`monday` must not redefine shared policy fields such as `goal_key`, `schedule_key`, `idempotency_key`, `dependency_keys`, `retry_budget`, `escalation_policy_ref`, and `completion_policy_ref`.
 
 ## Consequences
-- Codex recurring automation can be replaced later without moving control-plane truth out of planningops
-- scheduler growth can remain simple at first because queue persistence and execution stay local
-- monday can add real scheduling without re-embedding Slack/email logic into planningops
+Positive:
+- Wave4 gets a monday-owned scheduler cycle entrypoint that can replace Codex-hosted recurring execution later.
+- Queue runtime semantics are shared-contract driven instead of prompt-local.
+- Existing guardrail tests continue to run through backward compatibility.
+
+Tradeoffs:
+- The baseline keeps JSON-file idempotency and transition logs rather than durable SQLite storage in this wave.
+- Scheduler evidence currently remains issue-number oriented; queue-native evidence can be promoted in a follow-up contract wave.
+
+## Follow-ups
+- Promote queue-native scheduler evidence schema once downstream consumers migrate from `issue_number` assumptions.
+- Add SQLite-backed queue persistence and lease lifecycle once wave4 baseline is merged and stable.
