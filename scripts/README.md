@@ -10,6 +10,7 @@ Host repeatable runtime handoff, scheduler, and validation tooling.
 - local runtime smoke entrypoint
 - operator channel delivery CLI baselines
 - supervisor handoff status update CLI
+- supervisor handoff goal completion CLI
 - generic runbook contract validation
 - scheduler queue tests
 - runtime integration runbook validation
