@@ -56,7 +56,7 @@ rows = {
         """
     ).fetchall()
 }
-transition_count = conn.execute("SELECT COUNT(*) AS count FROM lease_transitions").fetchone()["count"]
+transition_count = conn.execute("SELECT COUNT(*) AS count FROM queue_transitions").fetchone()["count"]
 conn.close()
 
 first = rows["queue-wave4-001"]

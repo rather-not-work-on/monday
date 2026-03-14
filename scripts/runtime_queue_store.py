@@ -14,6 +14,7 @@ from runtime_evidence_contract import load_json
 
 DEFAULT_QUEUE_ITEM_SCHEMA = Path("../platform-contracts/schemas/runtime-scheduler-queue-item.schema.json")
 DEFAULT_LEASE_SCHEMA = Path("../platform-contracts/schemas/runtime-scheduler-lease-lifecycle.schema.json")
+DEFAULT_WORKER_OUTCOME_SCHEMA = Path("../platform-contracts/schemas/runtime-queue-worker-outcome.schema.json")
 
 Draft202012Validator, FormatChecker, _SchemaError = load_validator_exports()
 
@@ -43,8 +44,8 @@ CREATE TABLE IF NOT EXISTS queue_items (
 );
 """
 
-LEASE_TABLE = """
-CREATE TABLE IF NOT EXISTS lease_transitions (
+TRANSITION_TABLE = """
+CREATE TABLE IF NOT EXISTS queue_transitions (
   transition_id TEXT PRIMARY KEY,
   queue_item_id TEXT NOT NULL,
   occurred_at_utc TEXT NOT NULL,
@@ -74,7 +75,7 @@ def connect(db_path: Path) -> sqlite3.Connection:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.execute(QUEUE_TABLE)
-    conn.execute(LEASE_TABLE)
+    conn.execute(TRANSITION_TABLE)
     return conn
 
 
@@ -222,27 +223,35 @@ def list_completed_queue_item_ids(conn: sqlite3.Connection) -> set[str]:
     return {str(row["queue_item_id"]) for row in rows}
 
 
-def store_transition(conn: sqlite3.Connection, transition: dict[str, Any], lease_validator) -> dict[str, Any]:
-    lease_validator.validate(transition)
-    queue_item_id = transition["queue_item_id"]
-    row = conn.execute(
-        "SELECT queue_item_id FROM queue_items WHERE queue_item_id = ?",
-        [queue_item_id],
-    ).fetchone()
-    if row is None:
-        raise RuntimeError(f"queue item not found: {queue_item_id}")
+def insert_transition_row(conn: sqlite3.Connection, transition: dict[str, Any]) -> None:
     conn.execute(
         """
-        INSERT INTO lease_transitions (transition_id, queue_item_id, occurred_at_utc, raw_payload_json)
+        INSERT INTO queue_transitions (transition_id, queue_item_id, occurred_at_utc, raw_payload_json)
         VALUES (?, ?, ?, ?)
         """,
         [
             transition["transition_id"],
-            queue_item_id,
+            transition["queue_item_id"],
             transition["occurred_at_utc"],
             json.dumps(transition, ensure_ascii=True, sort_keys=True),
         ],
     )
+
+
+def store_transition(conn: sqlite3.Connection, transition: dict[str, Any], lease_validator) -> dict[str, Any]:
+    lease_validator.validate(transition)
+    queue_item_id = transition["queue_item_id"]
+    row = conn.execute(
+        "SELECT queue_item_id, state FROM queue_items WHERE queue_item_id = ?",
+        [queue_item_id],
+    ).fetchone()
+    if row is None:
+        raise RuntimeError(f"queue item not found: {queue_item_id}")
+    if row["state"] != transition["state_from"]:
+        raise RuntimeError(
+            f"queue item state mismatch for {queue_item_id}: expected {transition['state_from']}, got {row['state']}"
+        )
+    insert_transition_row(conn, transition)
     blocked_reason = None
     if transition["state_to"] == "blocked":
         blocked_reason = transition["transition_reason"]
@@ -269,6 +278,55 @@ def store_transition(conn: sqlite3.Connection, transition: dict[str, Any], lease
             transition["retry_budget_remaining"],
             transition.get("dead_letter_reason"),
             transition.get("completion_evidence_ref"),
+            now_utc(),
+            queue_item_id,
+        ],
+    )
+    conn.commit()
+    return read_queue_rows(conn, "WHERE queue_item_id = ?", [queue_item_id])[0]
+
+
+def store_worker_outcome(conn: sqlite3.Connection, outcome: dict[str, Any], outcome_validator) -> dict[str, Any]:
+    outcome_validator.validate(outcome)
+    queue_item_id = outcome["queue_item_id"]
+    row = conn.execute(
+        "SELECT queue_item_id, state, lease_owner FROM queue_items WHERE queue_item_id = ?",
+        [queue_item_id],
+    ).fetchone()
+    if row is None:
+        raise RuntimeError(f"queue item not found: {queue_item_id}")
+    if row["state"] != outcome["state_from"]:
+        raise RuntimeError(
+            f"queue item state mismatch for {queue_item_id}: expected {outcome['state_from']}, got {row['state']}"
+        )
+    if row["lease_owner"] and row["lease_owner"] != outcome["lease_owner"]:
+        raise RuntimeError(
+            f"queue item lease owner mismatch for {queue_item_id}: expected {row['lease_owner']}, got {outcome['lease_owner']}"
+        )
+    insert_transition_row(conn, outcome)
+    conn.execute(
+        """
+        UPDATE queue_items
+        SET state = ?,
+            lease_owner = ?,
+            lease_expires_at_utc = ?,
+            blocked_reason = ?,
+            attempt_count = ?,
+            retry_budget_remaining = ?,
+            dead_letter_reason = ?,
+            completion_evidence_ref = ?,
+            updated_at_utc = ?
+        WHERE queue_item_id = ?
+        """,
+        [
+            outcome["state_to"],
+            outcome["lease_owner"],
+            None,
+            None,
+            outcome["attempt_count"],
+            outcome["retry_budget_remaining"],
+            outcome.get("dead_letter_reason"),
+            outcome.get("completion_evidence_ref"),
             now_utc(),
             queue_item_id,
         ],
