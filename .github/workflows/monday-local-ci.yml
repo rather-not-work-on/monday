@@ -100,6 +100,9 @@ jobs:
       - name: Verify scheduler queue runtime ADR contract
         run: bash scripts/test_scheduler_queue_runtime_adr.sh
 
+      - name: Verify runtime queue store baseline
+        run: bash scripts/test_runtime_queue_store.sh
+
       - name: Verify runtime integration guardrails
         run: bash scripts/test_runtime_guardrails.sh
 
