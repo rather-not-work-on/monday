@@ -7,6 +7,7 @@ Runtime surface for UAP Executor/Worker integration.
 - Ralph Loop handoff packet to runtime input mapping
 - Interface smoke validation for field mismatch detection
 - repo-owned runtime evidence schemas for handoff, scheduler, and integration
+- queue worker outcome transition baseline for durable local runtime state changes
 
 ## Key Files
 - `docs/adr/adr-0001-executor-worker-naming.md`
@@ -28,6 +29,8 @@ Runtime surface for UAP Executor/Worker integration.
 - `scripts/validate_runtime_evidence.py`
 - `scripts/integrate_planningops_handoff.py`
 - `scripts/runtime_queue_store.py`
+- `scripts/record_queue_worker_outcome.py`
+- `scripts/test_record_queue_worker_outcome_cli.sh`
 - `scripts/validate_runbook_contract.py`
 - `scripts/validate_runtime_integration_runbook.py`
 - `scripts/run_scheduled_queue_cycle.py`
@@ -73,6 +76,7 @@ python3 scripts/integrate_planningops_handoff.py --run-id handoff-integration-lo
 bash scripts/test_run_scheduled_queue_cycle.sh
 bash scripts/test_run_scheduled_queue_cycle_store.sh
 bash scripts/test_runtime_queue_store.sh
+bash scripts/test_record_queue_worker_outcome_cli.sh
 bash scripts/test_scheduler_queue.sh
 bash scripts/test_runtime_guardrails.sh
 python3 scripts/validate_contract_pin.py
