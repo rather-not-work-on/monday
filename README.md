@@ -28,6 +28,7 @@ Runtime surface for UAP Executor/Worker integration.
 - `scripts/validate_runtime_integration_runbook.py`
 - `scripts/test_runtime_guardrails.sh`
 - `scripts/send_supervisor_status_update.py`
+- `scripts/send_supervisor_goal_completion.py`
 
 Topology guide:
 - `docs/repo-topology.md`
