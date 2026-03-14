@@ -18,6 +18,7 @@ from runtime_queue_store import (
     store_transition,
 )
 from runtime_evidence_contract import load_json, validate_report
+from select_scheduled_worker_outcome import select_worker_outcome
 
 
 DEFAULT_TAXONOMY = Path("config/runtime-reason-taxonomy.json")
@@ -461,8 +462,10 @@ def main():
     )
     parser.add_argument("--queue-item-schema", default=str(DEFAULT_QUEUE_ITEM_SCHEMA))
     parser.add_argument("--worker-outcome-json", default=None)
+    parser.add_argument("--worker-outcome-root", default=None)
     parser.add_argument("--worker-outcome-schema", default=str(DEFAULT_WORKER_OUTCOME_SCHEMA))
     parser.add_argument("--worker-outcome-handoff-output", default=None)
+    parser.add_argument("--worker-outcome-selection-output", default=None)
     parser.add_argument("--queue-db", default=None)
     parser.add_argument(
         "--lease-schema",
@@ -522,6 +525,53 @@ def main():
         )
         handoff_required = True
         handoff_ref = normalize_repo_path(handoff_output)
+    elif args.worker_outcome_root:
+        selection_output = (
+            Path(args.worker_outcome_selection_output)
+            if args.worker_outcome_selection_output
+            else report_path.with_name(f"{report_path.stem}-worker-outcome-selection.json")
+        )
+        scheduled_report = {
+            "run_id": run_id,
+            "dequeued_count": len(dequeued),
+            "dequeued": dequeued,
+            "reason_code": reason_code,
+        }
+        selection = select_worker_outcome(
+            scheduled_report=scheduled_report,
+            scheduled_report_path=report_path,
+            queue_doc=queue_doc,
+            queue_db=Path(args.queue_db) if args.queue_db else None,
+            worker_outcome_root=Path(args.worker_outcome_root),
+            worker_outcome_schema=Path(args.worker_outcome_schema),
+        )
+        save_json(selection_output, selection)
+        if selection["verdict"] == "fail":
+            print(f"worker outcome selection failed: {selection['errors']}", file=sys.stderr)
+            return 1
+        if selection["selected"]:
+            worker_outcome_path = Path(selection["source_worker_outcome_ref"])
+            if not worker_outcome_path.is_absolute():
+                worker_outcome_path = REPO_ROOT / worker_outcome_path
+            worker_outcome = load_json(worker_outcome_path, None)
+            if worker_outcome is None:
+                raise SystemExit(f"selected worker outcome json not found: {worker_outcome_path}")
+            handoff_output = (
+                Path(args.worker_outcome_handoff_output)
+                if args.worker_outcome_handoff_output
+                else report_path.with_name(f"{report_path.stem}-worker-outcome-handoff.json")
+            )
+            build_worker_outcome_handoff(
+                queue_doc=queue_doc,
+                dequeued=dequeued,
+                run_id=run_id,
+                report_path=report_path,
+                worker_outcome_path=worker_outcome_path,
+                worker_outcome=worker_outcome,
+                output_path=handoff_output,
+            )
+            handoff_required = True
+            handoff_ref = normalize_repo_path(handoff_output)
 
     report = {
         "generated_at_utc": now_utc(),

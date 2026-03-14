@@ -12,7 +12,11 @@ REPORT_PATH="$TMP_DIR/run-report-store.json"
 IDEMPOTENCY_PATH="$TMP_DIR/idempotency.json"
 TRANSITION_LOG="$TMP_DIR/scheduled-cycle-store.ndjson"
 HANDOFF_PATH="$TMP_DIR/worker-outcome-handoff.json"
-OUTCOME_PATH="$TMP_DIR/worker-outcome.json"
+SELECTION_PATH="$TMP_DIR/worker-outcome-selection.json"
+OUTCOME_ROOT="$TMP_DIR/runtime-artifacts/worker-outcome"
+OUTCOME_PATH="$OUTCOME_ROOT/test-scheduled-cycle-store-1.json"
+
+mkdir -p "$OUTCOME_ROOT"
 
 cat > "$OUTCOME_PATH" <<'JSON'
 {
@@ -35,7 +39,8 @@ JSON
 python3 scripts/run_scheduled_queue_cycle.py \
   --queue fixtures/runtime-scheduler-queue.sample.json \
   --queue-db "$DB_PATH" \
-  --worker-outcome-json "$OUTCOME_PATH" \
+  --worker-outcome-root "$OUTCOME_ROOT" \
+  --worker-outcome-selection-output "$SELECTION_PATH" \
   --worker-outcome-handoff-output "$HANDOFF_PATH" \
   --lease-schema ../platform-contracts/schemas/runtime-scheduler-lease-lifecycle.schema.json \
   --lease-owner monday-test-worker \
@@ -122,6 +127,20 @@ if handoff["queue_item_id"] != "queue-wave4-001":
     raise SystemExit(f"unexpected queue_item_id: {handoff['queue_item_id']}")
 if handoff["source_worker_outcome_contract_ref"] != "platform-contracts/schemas/runtime-queue-worker-outcome.schema.json":
     raise SystemExit("unexpected worker outcome contract ref")
+PY
+
+python3 - "$SELECTION_PATH" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+selection = json.loads(Path(sys.argv[1]).read_text())
+if selection["verdict"] != "pass":
+    raise SystemExit(f"expected selector verdict=pass, got {selection['verdict']}")
+if selection["selected"] is not True:
+    raise SystemExit(f"expected selector selected=true, got {selection['selected']}")
+if selection["queue_item_id"] != "queue-wave4-001":
+    raise SystemExit(f"unexpected selector queue_item_id: {selection['queue_item_id']}")
 PY
 
 echo "scheduled queue cycle store test passed"

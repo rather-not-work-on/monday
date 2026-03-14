@@ -8,6 +8,7 @@ Host repeatable runtime handoff, scheduler, and validation tooling.
 - runtime evidence validation
 - planningops integration smoke
 - scheduled queue cycle baseline entrypoint
+- scheduler-native worker-outcome selector
 - SQLite-backed queue store baseline entrypoint
 - queue worker outcome transition CLI baseline
 - local runtime smoke entrypoint
@@ -17,6 +18,7 @@ Host repeatable runtime handoff, scheduler, and validation tooling.
 - generic runbook contract validation
 - scheduler queue tests
 - scheduled queue cycle tests
+- scheduled worker-outcome selector tests
 - queue store tests
 - SQLite-backed scheduled queue cycle regression
 - queue worker outcome transition tests
