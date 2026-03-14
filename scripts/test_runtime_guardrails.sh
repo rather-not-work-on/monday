@@ -19,6 +19,10 @@ python3 "$ROOT_DIR/scripts/validate_runbook_contract.py" \
   --contract "$ROOT_DIR/config/operator-channel-adapter-runbook-contract.json" \
   --output "$TMP_DIR/operator-channel-adapter-runbook-validation.json"
 
+python3 "$ROOT_DIR/scripts/validate_runbook_contract.py" \
+  --contract "$ROOT_DIR/config/planningops-supervisor-handoff-runbook-contract.json" \
+  --output "$TMP_DIR/planningops-supervisor-handoff-runbook-validation.json"
+
 python3 "$ROOT_DIR/scripts/integrate_planningops_handoff.py" \
   --run-id "$RUN_ID" \
   --handoff-report "$TMP_DIR/handoff-smoke-report.json" \

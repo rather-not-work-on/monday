@@ -14,6 +14,7 @@ Runtime surface for UAP Executor/Worker integration.
 - `docs/runbook/runtime-integration-runbook.md`
 - `docs/runbook/goal-completion-notifier.md`
 - `docs/runbook/operator-channel-adapter.md`
+- `docs/runbook/planningops-supervisor-handoff.md`
 - `contracts/handoff-required-fields.json`
 - `contracts/executor-worker-handoff-map.json`
 - `contracts/runtime-*-evidence.schema.json`
@@ -21,6 +22,7 @@ Runtime surface for UAP Executor/Worker integration.
 - `config/runtime-integration-runbook-contract.json`
 - `config/goal-completion-notifier-runbook-contract.json`
 - `config/operator-channel-adapter-runbook-contract.json`
+- `config/planningops-supervisor-handoff-runbook-contract.json`
 - `scripts/validate_handoff_mapping.py`
 - `scripts/validate_runtime_evidence.py`
 - `scripts/integrate_planningops_handoff.py`
