@@ -42,7 +42,7 @@ python3 "$ROOT_DIR/scripts/validate_runtime_evidence.py" \
   --report "$TMP_DIR/planningops-handoff-report.json" \
   --output "$TMP_DIR/integration-validation-report.json"
 
-python3 "$ROOT_DIR/scripts/scheduler_queue.py" \
+python3 "$ROOT_DIR/scripts/run_scheduled_queue_cycle.py" \
   --queue "$TMP_DIR/queue.from-planningops.json" \
   --run-id "${RUN_ID}-replay" \
   --idempotency "$TMP_DIR/idempotency.json" \

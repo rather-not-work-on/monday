@@ -1,0 +1,45 @@
+{
+  "queue_items": [
+    {
+      "queue_item_id": "queue-wave4-001",
+      "goal_key": "uap-goal-driven-autonomy-wave4",
+      "schedule_key": "local-tick-5m",
+      "state": "ready",
+      "idempotency_key": "wave4:queue-wave4-001",
+      "priority_class": "standard",
+      "retry_budget": {
+        "max_attempts": 3,
+        "backoff_profile": "exponential"
+      },
+      "retry_budget_remaining": 3,
+      "attempt_count": 0,
+      "dependency_keys": [],
+      "escalation_policy_ref": "planningops/contracts/escalation-gate-contract.md",
+      "completion_policy_ref": "planningops/contracts/goal-completion-contract.md",
+      "target_repo": "rather-not-work-on/monday",
+      "work_payload_ref": "planningops/artifacts/backlog/goal-driven-autonomy-wave4-projected-issues.json"
+    },
+    {
+      "queue_item_id": "queue-wave4-002",
+      "goal_key": "uap-goal-driven-autonomy-wave4",
+      "schedule_key": "local-tick-5m",
+      "state": "ready",
+      "idempotency_key": "wave4:queue-wave4-002",
+      "priority_class": "standard",
+      "retry_budget": {
+        "max_attempts": 3,
+        "backoff_profile": "exponential"
+      },
+      "retry_budget_remaining": 3,
+      "attempt_count": 0,
+      "dependency_keys": [
+        "queue-wave4-999"
+      ],
+      "escalation_policy_ref": "planningops/contracts/escalation-gate-contract.md",
+      "completion_policy_ref": "planningops/contracts/goal-completion-contract.md",
+      "target_repo": "rather-not-work-on/monday",
+      "work_payload_ref": "planningops/artifacts/backlog/goal-driven-autonomy-wave4-projected-issues.json"
+    }
+  ],
+  "completed_queue_item_ids": []
+}

@@ -7,12 +7,14 @@ Host repeatable runtime handoff, scheduler, and validation tooling.
 - handoff mapping validation
 - runtime evidence validation
 - planningops integration smoke
+- scheduled queue cycle baseline entrypoint
 - local runtime smoke entrypoint
 - operator channel delivery CLI baselines
 - supervisor handoff status update CLI
 - supervisor handoff goal completion CLI
 - generic runbook contract validation
 - scheduler queue tests
+- scheduled queue cycle tests
 - runtime integration runbook validation
 - runtime integration guardrail regression
 
