@@ -17,6 +17,7 @@ Host repeatable runtime handoff, scheduler, and validation tooling.
 - scheduler queue tests
 - scheduled queue cycle tests
 - queue store tests
+- SQLite-backed scheduled queue cycle regression
 - runtime integration runbook validation
 - runtime integration guardrail regression
 

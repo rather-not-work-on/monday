@@ -2,12 +2,20 @@
 
 import argparse
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import re
 import sys
 
 from jsonschema_compat import load_validator_exports
+from runtime_queue_store import (
+    connect as connect_queue_store,
+    list_completed_queue_item_ids,
+    load_validator as load_store_validator,
+    read_queue_rows,
+    seed_queue_items,
+    store_transition,
+)
 from runtime_evidence_contract import load_json, validate_report
 
 
@@ -62,6 +70,10 @@ def validate_wave4_queue_items(queue_items: list[dict], schema_path: Path):
             validator.validate(item)
         except Exception as exc:  # noqa: BLE001
             raise ValueError(f"queue_items[{idx}] failed schema validation: {exc}") from exc
+
+
+def lease_expiry(now_value: datetime, duration_seconds: int) -> str:
+    return (now_value + timedelta(seconds=duration_seconds)).isoformat()
 
 
 def run_legacy_cycle(args, queue_doc: dict, processed: set[str], run_id: str):
@@ -227,6 +239,139 @@ def run_wave4_cycle(args, queue_doc: dict, processed: set[str], run_id: str):
     return dequeued, blocked, duplicates, replanning_triggered_cards
 
 
+def run_store_backed_wave4_cycle(args, queue_doc: dict, processed: set[str], run_id: str):
+    conn = connect_queue_store(Path(args.queue_db))
+    queue_validator = load_store_validator(Path(args.queue_item_schema))
+    lease_validator = load_store_validator(Path(args.lease_schema))
+    queue_items = queue_doc.get("queue_items", [])
+    if not isinstance(queue_items, list):
+        raise ValueError("queue_items must be a list")
+    seed_queue_items(
+        conn,
+        queue_items,
+        queue_validator,
+        replace_existing=args.db_seed_mode == "replace",
+    )
+    completed = set(queue_doc.get("completed_queue_item_ids", []))
+    completed.update(list_completed_queue_item_ids(conn))
+    ready_items = read_queue_rows(conn, "WHERE state IN ('ready', 'scheduled', 'retry_wait')")
+
+    dequeued = []
+    blocked = []
+    duplicates = []
+    replanning_triggered_cards = []
+
+    for idx, item in enumerate(ready_items, start=1):
+        queue_item_id = item["queue_item_id"]
+        idempotency_key = item["idempotency_key"]
+        state = item["state"]
+        deps = item.get("dependency_keys", [])
+        issue_number = infer_issue_number(queue_item_id, idx)
+        current_time = datetime.now(timezone.utc)
+        transition_id = f"{run_id}-{queue_item_id}"
+
+        if idempotency_key in processed:
+            duplicates.append(queue_item_id)
+            append_ndjson(
+                Path(args.transition_log),
+                {
+                    "transition_id": f"{transition_id}-duplicate",
+                    "run_id": run_id,
+                    "card_id": queue_item_id,
+                    "from_state": state,
+                    "to_state": "Skipped",
+                    "transition_reason": "idempotency.duplicate_dequeue",
+                    "replanning_flag": False,
+                    "decided_at_utc": now_utc(),
+                },
+            )
+            continue
+
+        unresolved = [dep for dep in deps if dep not in completed]
+        if unresolved:
+            blocked.append(
+                {
+                    "card_id": queue_item_id,
+                    "issue_number": issue_number,
+                    "unresolved_depends_on": [infer_issue_number(dep, idx) for dep in unresolved],
+                }
+            )
+            store_transition(
+                conn,
+                {
+                    "transition_id": f"{transition_id}-blocked",
+                    "queue_item_id": queue_item_id,
+                    "goal_key": item["goal_key"],
+                    "schedule_key": item["schedule_key"],
+                    "lease_owner": args.lease_owner,
+                    "lease_token": transition_id,
+                    "state_from": state,
+                    "state_to": "blocked",
+                    "transition_reason": "dependency.unresolved",
+                    "occurred_at_utc": current_time.isoformat(),
+                    "attempt_count": item["attempt_count"],
+                    "retry_budget_remaining": item["retry_budget_remaining"],
+                },
+                lease_validator,
+            )
+            append_ndjson(
+                Path(args.transition_log),
+                {
+                    "transition_id": f"{transition_id}-blocked",
+                    "run_id": run_id,
+                    "card_id": queue_item_id,
+                    "from_state": state,
+                    "to_state": "blocked",
+                    "transition_reason": "dependency.unresolved",
+                    "unresolved_depends_on": unresolved,
+                    "replanning_flag": False,
+                    "decided_at_utc": current_time.isoformat(),
+                },
+            )
+            continue
+
+        dequeued.append({"card_id": queue_item_id, "issue_number": issue_number})
+        processed.add(idempotency_key)
+        completed.add(queue_item_id)
+        store_transition(
+            conn,
+            {
+                "transition_id": f"{transition_id}-leased",
+                "queue_item_id": queue_item_id,
+                "goal_key": item["goal_key"],
+                "schedule_key": item["schedule_key"],
+                "lease_owner": args.lease_owner,
+                "lease_token": transition_id,
+                "state_from": state,
+                "state_to": "leased",
+                "transition_reason": "scheduler.dequeue",
+                "occurred_at_utc": current_time.isoformat(),
+                "lease_expires_at_utc": lease_expiry(current_time, args.lease_duration_seconds),
+                "heartbeat_at_utc": current_time.isoformat(),
+                "attempt_count": item["attempt_count"] + 1,
+                "retry_budget_remaining": item["retry_budget_remaining"],
+                "worker_run_id": run_id,
+            },
+            lease_validator,
+        )
+        append_ndjson(
+            Path(args.transition_log),
+            {
+                "transition_id": f"{transition_id}-leased",
+                "run_id": run_id,
+                "card_id": queue_item_id,
+                "from_state": state,
+                "to_state": "leased",
+                "transition_reason": "scheduler.dequeue",
+                "replanning_flag": False,
+                "decided_at_utc": current_time.isoformat(),
+            },
+        )
+
+    conn.close()
+    return dequeued, blocked, duplicates, replanning_triggered_cards
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run a scheduled queue cycle baseline")
     parser.add_argument("--queue", default="fixtures/queue.sample.json")
@@ -238,6 +383,14 @@ def main():
         default="runtime-artifacts/transition-log/scheduled-queue-cycle.ndjson",
     )
     parser.add_argument("--queue-item-schema", default=str(DEFAULT_QUEUE_ITEM_SCHEMA))
+    parser.add_argument("--queue-db", default=None)
+    parser.add_argument(
+        "--lease-schema",
+        default=str(Path("../platform-contracts/schemas/runtime-scheduler-lease-lifecycle.schema.json")),
+    )
+    parser.add_argument("--lease-owner", default="monday-local-worker")
+    parser.add_argument("--lease-duration-seconds", type=int, default=300)
+    parser.add_argument("--db-seed-mode", choices=["insert", "replace"], default="insert")
     args = parser.parse_args()
 
     run_id = args.run_id or f"scheduled-cycle-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
@@ -245,7 +398,11 @@ def main():
     idem_doc = load_json(Path(args.idempotency), {"processed_card_ids": []})
     processed = set(idem_doc.get("processed_card_ids", []))
 
-    if "queue_items" in queue_doc:
+    if args.queue_db and "queue_items" in queue_doc:
+        dequeued, blocked, duplicates, replanning_triggered_cards = run_store_backed_wave4_cycle(
+            args, queue_doc, processed, run_id
+        )
+    elif "queue_items" in queue_doc:
         dequeued, blocked, duplicates, replanning_triggered_cards = run_wave4_cycle(
             args, queue_doc, processed, run_id
         )
