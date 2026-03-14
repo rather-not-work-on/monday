@@ -19,6 +19,8 @@ python3 scripts/validate_runtime_evidence.py \
 first_reason_code=$(jq -r '.reason_code' "$TMP_DIR/run-report-wave4-first.json")
 first_dequeued=$(jq -r '.dequeued_count' "$TMP_DIR/run-report-wave4-first.json")
 first_blocked=$(jq -r '.blocked_count' "$TMP_DIR/run-report-wave4-first.json")
+first_handoff_required=$(jq -r '.handoff_required' "$TMP_DIR/run-report-wave4-first.json")
+first_handoff_ref=$(jq -r '.worker_outcome_handoff_ref' "$TMP_DIR/run-report-wave4-first.json")
 
 if [[ "$first_reason_code" != "blocked_dependencies" ]]; then
   echo "expected first run reason_code=blocked_dependencies, got $first_reason_code"
@@ -32,6 +34,16 @@ fi
 
 if [[ "$first_blocked" -lt 1 ]]; then
   echo "expected first run to report at least one blocked queue item"
+  exit 1
+fi
+
+if [[ "$first_handoff_required" != "false" ]]; then
+  echo "expected first run handoff_required=false, got $first_handoff_required"
+  exit 1
+fi
+
+if [[ "$first_handoff_ref" != "-" ]]; then
+  echo "expected first run worker_outcome_handoff_ref=-, got $first_handoff_ref"
   exit 1
 fi
 
@@ -71,6 +83,7 @@ python3 scripts/validate_runtime_evidence.py \
 
 second_reason_code=$(jq -r '.reason_code' "$TMP_DIR/run-report-wave4-second.json")
 second_duplicate=$(jq -r '.duplicate_count' "$TMP_DIR/run-report-wave4-second.json")
+second_handoff_required=$(jq -r '.handoff_required' "$TMP_DIR/run-report-wave4-second.json")
 
 if [[ "$second_reason_code" != "duplicates_detected" ]]; then
   echo "expected second run reason_code=duplicates_detected, got $second_reason_code"
@@ -79,6 +92,11 @@ fi
 
 if [[ "$second_duplicate" -lt 1 ]]; then
   echo "expected second run to detect duplicate dequeue"
+  exit 1
+fi
+
+if [[ "$second_handoff_required" != "false" ]]; then
+  echo "expected second run handoff_required=false, got $second_handoff_required"
   exit 1
 fi
 

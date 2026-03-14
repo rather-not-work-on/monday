@@ -9,6 +9,7 @@ import sys
 
 from jsonschema_compat import load_validator_exports
 from runtime_queue_store import (
+    DEFAULT_WORKER_OUTCOME_SCHEMA,
     connect as connect_queue_store,
     list_completed_queue_item_ids,
     load_validator as load_store_validator,
@@ -22,6 +23,10 @@ from runtime_evidence_contract import load_json, validate_report
 DEFAULT_TAXONOMY = Path("config/runtime-reason-taxonomy.json")
 DEFAULT_EVIDENCE_SCHEMA = Path("contracts/runtime-scheduler-evidence.schema.json")
 DEFAULT_QUEUE_ITEM_SCHEMA = Path("../platform-contracts/schemas/runtime-scheduler-queue-item.schema.json")
+DEFAULT_HANDOFF_CONTRACT_REF = "planningops/contracts/scheduled-worker-outcome-handoff-contract.md"
+DEFAULT_WORKER_OUTCOME_CONTRACT_REF = "platform-contracts/schemas/runtime-queue-worker-outcome.schema.json"
+SOURCE_REPO = "rather-not-work-on/monday"
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 Draft202012Validator, FormatChecker, _SchemaError = load_validator_exports()
 
@@ -39,6 +44,74 @@ def append_ndjson(path: Path, row):
 
 def now_utc():
     return datetime.now(timezone.utc).isoformat()
+
+
+def normalize_repo_path(path: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(REPO_ROOT.resolve()))
+    except ValueError:
+        return str(path.resolve())
+
+
+def find_queue_item(queue_doc: dict, queue_item_id: str):
+    for item in queue_doc.get("queue_items", []):
+        if item.get("queue_item_id") == queue_item_id:
+            return item
+    return None
+
+
+def build_worker_outcome_handoff(
+    *,
+    queue_doc: dict,
+    dequeued: list[dict],
+    run_id: str,
+    report_path: Path,
+    worker_outcome_path: Path,
+    worker_outcome: dict,
+    output_path: Path,
+) -> dict:
+    if len(dequeued) != 1:
+        raise RuntimeError("scheduled worker-outcome handoff requires exactly one dequeued queue item")
+    selected_queue_item_id = dequeued[0]["card_id"]
+    if worker_outcome["queue_item_id"] != selected_queue_item_id:
+        raise RuntimeError(
+            f"worker outcome queue_item_id mismatch: expected {selected_queue_item_id}, got {worker_outcome['queue_item_id']}"
+        )
+    queue_item = find_queue_item(queue_doc, selected_queue_item_id)
+    if queue_item is None:
+        raise RuntimeError(f"queue item not found for handoff: {selected_queue_item_id}")
+    if worker_outcome["goal_key"] != queue_item["goal_key"]:
+        raise RuntimeError(
+            f"worker outcome goal_key mismatch: expected {queue_item['goal_key']}, got {worker_outcome['goal_key']}"
+        )
+    if worker_outcome["schedule_key"] != queue_item["schedule_key"]:
+        raise RuntimeError(
+            f"worker outcome schedule_key mismatch: expected {queue_item['schedule_key']}, got {worker_outcome['schedule_key']}"
+        )
+    if worker_outcome["worker_run_id"] != run_id:
+        raise RuntimeError(
+            f"worker outcome worker_run_id mismatch: expected {run_id}, got {worker_outcome['worker_run_id']}"
+        )
+
+    handoff = {
+        "handoff_version": 1,
+        "generated_at_utc": now_utc(),
+        "handoff_contract_ref": DEFAULT_HANDOFF_CONTRACT_REF,
+        "source_repo": SOURCE_REPO,
+        "scheduled_run_id": run_id,
+        "scheduled_report_ref": normalize_repo_path(report_path),
+        "source_worker_outcome_ref": normalize_repo_path(worker_outcome_path),
+        "source_worker_outcome_contract_ref": DEFAULT_WORKER_OUTCOME_CONTRACT_REF,
+        "goal_key": worker_outcome["goal_key"],
+        "schedule_key": worker_outcome["schedule_key"],
+        "queue_item_id": worker_outcome["queue_item_id"],
+        "worker_run_id": worker_outcome["worker_run_id"],
+        "state_to": worker_outcome["state_to"],
+        "transition_reason": worker_outcome["transition_reason"],
+        "verdict": "pass",
+    }
+    save_json(output_path, handoff)
+    return handoff
 
 
 def resolve_reason_code(dequeued_count: int, blocked_count: int, duplicate_count: int):
@@ -387,6 +460,9 @@ def main():
         default="runtime-artifacts/transition-log/scheduled-queue-cycle.ndjson",
     )
     parser.add_argument("--queue-item-schema", default=str(DEFAULT_QUEUE_ITEM_SCHEMA))
+    parser.add_argument("--worker-outcome-json", default=None)
+    parser.add_argument("--worker-outcome-schema", default=str(DEFAULT_WORKER_OUTCOME_SCHEMA))
+    parser.add_argument("--worker-outcome-handoff-output", default=None)
     parser.add_argument("--queue-db", default=None)
     parser.add_argument(
         "--lease-schema",
@@ -401,6 +477,7 @@ def main():
     queue_doc = load_json(Path(args.queue), {})
     idem_doc = load_json(Path(args.idempotency), {"processed_card_ids": []})
     processed = set(idem_doc.get("processed_card_ids", []))
+    report_path = Path(args.report)
 
     if args.queue_db and "queue_items" in queue_doc:
         dequeued, blocked, duplicates, replanning_triggered_cards = run_store_backed_wave4_cycle(
@@ -420,10 +497,39 @@ def main():
     reason_code = resolve_reason_code(len(dequeued), len(blocked), len(duplicates))
     verdict = "pass" if reason_code != "scheduler_no_dequeue" else "fail"
     taxonomy = load_json(DEFAULT_TAXONOMY)
+    handoff_required = False
+    handoff_ref = "-"
+    if args.worker_outcome_json:
+        worker_outcome_path = Path(args.worker_outcome_json)
+        worker_outcome = load_json(worker_outcome_path, None)
+        if worker_outcome is None:
+            raise SystemExit(f"worker outcome json not found: {args.worker_outcome_json}")
+        outcome_validator = load_store_validator(Path(args.worker_outcome_schema))
+        outcome_validator.validate(worker_outcome)
+        handoff_output = (
+            Path(args.worker_outcome_handoff_output)
+            if args.worker_outcome_handoff_output
+            else report_path.with_name(f"{report_path.stem}-worker-outcome-handoff.json")
+        )
+        build_worker_outcome_handoff(
+            queue_doc=queue_doc,
+            dequeued=dequeued,
+            run_id=run_id,
+            report_path=report_path,
+            worker_outcome_path=worker_outcome_path,
+            worker_outcome=worker_outcome,
+            output_path=handoff_output,
+        )
+        handoff_required = True
+        handoff_ref = normalize_repo_path(handoff_output)
+
     report = {
         "generated_at_utc": now_utc(),
         "run_id": run_id,
         "verdict": verdict,
+        "handoff_required": handoff_required,
+        "worker_outcome_handoff_ref": handoff_ref,
+        "worker_outcome_handoff_contract_ref": DEFAULT_HANDOFF_CONTRACT_REF,
         "reason_code": reason_code,
         "reason_taxonomy_version": int(taxonomy.get("version", 0)),
         "dequeued_count": len(dequeued),
@@ -436,7 +542,7 @@ def main():
         "replanning_triggered_cards": replanning_triggered_cards,
     }
     validate_report(report, DEFAULT_EVIDENCE_SCHEMA, DEFAULT_TAXONOMY)
-    save_json(Path(args.report), report)
+    save_json(report_path, report)
 
     print(f"report written: {args.report}")
     print(
