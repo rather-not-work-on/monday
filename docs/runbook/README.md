@@ -8,6 +8,7 @@ Keep operator-facing runtime usage and remediation guidance.
 - runtime integration and replay runbook
 - goal completion notification baseline
 - operator channel adapter baseline and skill boundary
+- planningops supervisor handoff baseline
 - contract pin remediation notes
 
 ## Rules

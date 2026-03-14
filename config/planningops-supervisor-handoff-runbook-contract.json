@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "runbook_path": "docs/runbook/planningops-supervisor-handoff.md",
+  "required_sections": [
+    "Goal",
+    "Contract Inputs",
+    "Status Update Command (Dry Run)",
+    "Goal Completion Command (Dry Run)",
+    "Apply Gate",
+    "Skill Boundary",
+    "Generated Artifacts",
+    "Healthy Signals",
+    "Rollback Trigger"
+  ],
+  "required_fragments": [
+    "scripts/send_supervisor_status_update.py",
+    "scripts/send_supervisor_goal_completion.py",
+    "planningops/contracts/supervisor-operator-handoff-contract.md",
+    "operator_transport_not_configured",
+    "goal_completion_transport_not_configured"
+  ],
+  "required_artifacts": [
+    "supervisor-status-update-report.json",
+    "supervisor-status-update-apply-report.json",
+    "supervisor-goal-completion-report.json",
+    "supervisor-goal-completion-apply-report.json"
+  ]
+}
