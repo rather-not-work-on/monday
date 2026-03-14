@@ -97,6 +97,9 @@ jobs:
       - name: Verify supervisor goal completion CLI contract
         run: bash scripts/test_supervisor_goal_completion_cli.sh
 
+      - name: Verify reflection decision update CLI contract
+        run: bash scripts/test_send_reflection_decision_update.sh
+
       - name: Verify scheduler queue runtime ADR contract
         run: bash scripts/test_scheduler_queue_runtime_adr.sh
 
