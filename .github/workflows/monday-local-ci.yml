@@ -106,6 +106,9 @@ jobs:
       - name: Verify runtime queue store baseline
         run: bash scripts/test_runtime_queue_store.sh
 
+      - name: Verify scheduler-native worker outcome selector
+        run: bash scripts/test_select_scheduled_worker_outcome.sh
+
       - name: Verify SQLite-backed scheduled queue cycle
         run: bash scripts/test_run_scheduled_queue_cycle_store.sh
 
