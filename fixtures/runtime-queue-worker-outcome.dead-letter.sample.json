@@ -1,0 +1,15 @@
+{
+  "transition_id": "wave6-outcome-003",
+  "queue_item_id": "queue-wave4-001",
+  "goal_key": "uap-goal-driven-autonomy-wave6",
+  "schedule_key": "local-tick-5m",
+  "lease_owner": "monday-local-worker",
+  "worker_run_id": "wave6-run-003",
+  "state_from": "leased",
+  "state_to": "dead_letter",
+  "transition_reason": "worker.retry_exhausted",
+  "occurred_at_utc": "2026-03-14T08:30:00Z",
+  "attempt_count": 2,
+  "retry_budget_remaining": 0,
+  "dead_letter_reason": "retry_budget_exhausted"
+}

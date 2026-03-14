@@ -254,7 +254,12 @@ def run_store_backed_wave4_cycle(args, queue_doc: dict, processed: set[str], run
     )
     completed = set(queue_doc.get("completed_queue_item_ids", []))
     completed.update(list_completed_queue_item_ids(conn))
-    ready_items = read_queue_rows(conn, "WHERE state IN ('ready', 'scheduled', 'retry_wait')")
+    current_time = datetime.now(timezone.utc)
+    ready_items = read_queue_rows(
+        conn,
+        "WHERE state IN ('ready', 'scheduled') OR (state = 'retry_wait' AND retry_after_utc IS NOT NULL AND retry_after_utc <= ?)",
+        [current_time.isoformat()],
+    )
 
     dequeued = []
     blocked = []
@@ -267,7 +272,6 @@ def run_store_backed_wave4_cycle(args, queue_doc: dict, processed: set[str], run
         state = item["state"]
         deps = item.get("dependency_keys", [])
         issue_number = infer_issue_number(queue_item_id, idx)
-        current_time = datetime.now(timezone.utc)
         transition_id = f"{run_id}-{queue_item_id}"
 
         if idempotency_key in processed:

@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS queue_items (
   work_payload_ref TEXT,
   lease_owner TEXT,
   lease_expires_at_utc TEXT,
+  retry_after_utc TEXT,
   blocked_reason TEXT,
   dead_letter_reason TEXT,
   completion_evidence_ref TEXT,
@@ -76,7 +77,18 @@ def connect(db_path: Path) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute(QUEUE_TABLE)
     conn.execute(TRANSITION_TABLE)
+    ensure_queue_item_columns(conn)
     return conn
+
+
+def ensure_queue_item_columns(conn: sqlite3.Connection) -> None:
+    existing = {
+        str(row["name"])
+        for row in conn.execute("PRAGMA table_info(queue_items)").fetchall()
+    }
+    if "retry_after_utc" not in existing:
+        conn.execute("ALTER TABLE queue_items ADD COLUMN retry_after_utc TEXT")
+        conn.commit()
 
 
 def normalize_queue_item(item: dict[str, Any]) -> dict[str, Any]:
@@ -97,6 +109,7 @@ def normalize_queue_item(item: dict[str, Any]) -> dict[str, Any]:
         "work_payload_ref": item.get("work_payload_ref"),
         "lease_owner": item.get("lease_owner"),
         "lease_expires_at_utc": item.get("lease_expires_at_utc"),
+        "retry_after_utc": item.get("retry_after_utc"),
         "blocked_reason": item.get("blocked_reason"),
         "dead_letter_reason": item.get("dead_letter_reason"),
         "completion_evidence_ref": item.get("completion_evidence_ref"),
@@ -193,7 +206,7 @@ def read_queue_rows(conn: sqlite3.Connection, where_clause: str = "", params: li
     sql = """
     SELECT queue_item_id, goal_key, schedule_key, state, idempotency_key, priority_class,
            retry_budget_remaining, attempt_count, dependency_keys_json, lease_owner,
-           lease_expires_at_utc, blocked_reason, dead_letter_reason, completion_evidence_ref,
+           lease_expires_at_utc, retry_after_utc, blocked_reason, dead_letter_reason, completion_evidence_ref,
            raw_payload_json, updated_at_utc
     FROM queue_items
     """
@@ -209,6 +222,7 @@ def read_queue_rows(conn: sqlite3.Connection, where_clause: str = "", params: li
         payload["attempt_count"] = row["attempt_count"]
         payload["lease_owner"] = row["lease_owner"]
         payload["lease_expires_at_utc"] = row["lease_expires_at_utc"]
+        payload["retry_after_utc"] = row["retry_after_utc"]
         payload["blocked_reason"] = row["blocked_reason"]
         payload["dead_letter_reason"] = row["dead_letter_reason"]
         payload["completion_evidence_ref"] = row["completion_evidence_ref"]
@@ -303,6 +317,12 @@ def store_worker_outcome(conn: sqlite3.Connection, outcome: dict[str, Any], outc
         raise RuntimeError(
             f"queue item lease owner mismatch for {queue_item_id}: expected {row['lease_owner']}, got {outcome['lease_owner']}"
         )
+    if outcome["state_to"] == "completed" and not outcome.get("completion_evidence_ref"):
+        raise RuntimeError("completed worker outcome requires completion_evidence_ref")
+    if outcome["state_to"] == "retry_wait" and not outcome.get("retry_after_utc"):
+        raise RuntimeError("retry_wait worker outcome requires retry_after_utc")
+    if outcome["state_to"] == "dead_letter" and not outcome.get("dead_letter_reason"):
+        raise RuntimeError("dead_letter worker outcome requires dead_letter_reason")
     insert_transition_row(conn, outcome)
     conn.execute(
         """
@@ -310,6 +330,7 @@ def store_worker_outcome(conn: sqlite3.Connection, outcome: dict[str, Any], outc
         SET state = ?,
             lease_owner = ?,
             lease_expires_at_utc = ?,
+            retry_after_utc = ?,
             blocked_reason = ?,
             attempt_count = ?,
             retry_budget_remaining = ?,
@@ -322,6 +343,7 @@ def store_worker_outcome(conn: sqlite3.Connection, outcome: dict[str, Any], outc
             outcome["state_to"],
             outcome["lease_owner"],
             None,
+            outcome.get("retry_after_utc"),
             None,
             outcome["attempt_count"],
             outcome["retry_budget_remaining"],
