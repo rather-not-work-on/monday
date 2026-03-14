@@ -7,6 +7,7 @@ Record stable architecture decisions for the runtime surface.
 - naming decisions
 - boundary decisions
 - future runtime architecture decisions
+- scheduler and queue runtime decisions
 
 ## Rules
 - ADRs are durable architecture records, not runbooks

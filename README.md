@@ -10,6 +10,7 @@ Runtime surface for UAP Executor/Worker integration.
 
 ## Key Files
 - `docs/adr/adr-0001-executor-worker-naming.md`
+- `docs/adr/adr-0002-local-first-scheduler-queue-runtime.md`
 - `docs/runbook/planningops-handoff-scheduler-runbook.md`
 - `docs/runbook/runtime-integration-runbook.md`
 - `docs/runbook/goal-completion-notifier.md`
