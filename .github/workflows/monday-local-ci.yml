@@ -106,6 +106,9 @@ jobs:
       - name: Verify SQLite-backed scheduled queue cycle
         run: bash scripts/test_run_scheduled_queue_cycle_store.sh
 
+      - name: Verify worker outcome lifecycle
+        run: bash scripts/test_record_queue_worker_outcome.sh
+
       - name: Verify runtime integration guardrails
         run: bash scripts/test_runtime_guardrails.sh
 

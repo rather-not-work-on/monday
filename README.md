@@ -31,6 +31,7 @@ Runtime surface for UAP Executor/Worker integration.
 - `scripts/runtime_queue_store.py`
 - `scripts/record_queue_worker_outcome.py`
 - `scripts/test_record_queue_worker_outcome_cli.sh`
+- `scripts/test_record_queue_worker_outcome.sh`
 - `scripts/validate_runbook_contract.py`
 - `scripts/validate_runtime_integration_runbook.py`
 - `scripts/run_scheduled_queue_cycle.py`
@@ -77,6 +78,7 @@ bash scripts/test_run_scheduled_queue_cycle.sh
 bash scripts/test_run_scheduled_queue_cycle_store.sh
 bash scripts/test_runtime_queue_store.sh
 bash scripts/test_record_queue_worker_outcome_cli.sh
+bash scripts/test_record_queue_worker_outcome.sh
 bash scripts/test_scheduler_queue.sh
 bash scripts/test_runtime_guardrails.sh
 python3 scripts/validate_contract_pin.py
@@ -91,6 +93,7 @@ bash scripts/test_contract_pin_validation.sh
   - scheduler evidence validation
   - SQLite queue store regression (`scripts/test_runtime_queue_store.sh`)
   - SQLite-backed scheduled queue cycle regression (`scripts/test_run_scheduled_queue_cycle_store.sh`)
+  - worker outcome lifecycle regression (`scripts/test_record_queue_worker_outcome.sh`)
   - contract pin validation
   - seeded failure guard (`test_contract_pin_validation.sh`)
   - topology/module README regression (`scripts/test_module_readmes.sh`)
