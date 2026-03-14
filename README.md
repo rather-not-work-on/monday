@@ -71,6 +71,7 @@ Current scaffolded runtime packages:
 python3 scripts/validate_handoff_mapping.py
 python3 scripts/integrate_planningops_handoff.py --run-id handoff-integration-local
 bash scripts/test_run_scheduled_queue_cycle.sh
+bash scripts/test_run_scheduled_queue_cycle_store.sh
 bash scripts/test_runtime_queue_store.sh
 bash scripts/test_scheduler_queue.sh
 bash scripts/test_runtime_guardrails.sh
@@ -85,6 +86,7 @@ bash scripts/test_contract_pin_validation.sh
   - planningops handoff integration smoke
   - scheduler evidence validation
   - SQLite queue store regression (`scripts/test_runtime_queue_store.sh`)
+  - SQLite-backed scheduled queue cycle regression (`scripts/test_run_scheduled_queue_cycle_store.sh`)
   - contract pin validation
   - seeded failure guard (`test_contract_pin_validation.sh`)
   - topology/module README regression (`scripts/test_module_readmes.sh`)

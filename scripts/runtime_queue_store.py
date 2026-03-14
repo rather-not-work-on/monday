@@ -118,6 +118,36 @@ def upsert_queue_item(conn: sqlite3.Connection, normalized: dict[str, Any]) -> N
     )
 
 
+def insert_queue_item_if_missing(conn: sqlite3.Connection, normalized: dict[str, Any]) -> None:
+    columns = list(normalized.keys())
+    conn.execute(
+        f"""
+        INSERT OR IGNORE INTO queue_items ({", ".join(columns)})
+        VALUES ({", ".join("?" for _ in columns)})
+        """,
+        [normalized[column] for column in columns],
+    )
+
+
+def seed_queue_items(
+    conn: sqlite3.Connection,
+    queue_items: list[dict[str, Any]],
+    queue_validator,
+    *,
+    replace_existing: bool,
+) -> int:
+    inserted = 0
+    for item in queue_items:
+        queue_validator.validate(item)
+        normalized = normalize_queue_item(item)
+        if replace_existing:
+            upsert_queue_item(conn, normalized)
+        else:
+            insert_queue_item_if_missing(conn, normalized)
+        inserted += 1
+    return inserted
+
+
 def command_init(args) -> int:
     conn = connect(Path(args.db))
     conn.close()
@@ -136,17 +166,19 @@ def command_seed(args) -> int:
     if not isinstance(queue_items, list):
         raise SystemExit("queue_items must be a list")
     conn = connect(Path(args.db))
-    inserted = 0
-    for idx, item in enumerate(queue_items):
-        queue_validator.validate(item)
-        upsert_queue_item(conn, normalize_queue_item(item))
-        inserted += 1
+    inserted = seed_queue_items(
+        conn,
+        queue_items,
+        queue_validator,
+        replace_existing=args.replace_existing,
+    )
     conn.commit()
     conn.close()
     report = {
         "db": args.db,
         "queue": args.queue,
         "inserted_count": inserted,
+        "replace_existing": args.replace_existing,
         "verdict": "pass",
     }
     if args.output:
@@ -183,6 +215,68 @@ def read_queue_rows(conn: sqlite3.Connection, where_clause: str = "", params: li
     return result
 
 
+def list_completed_queue_item_ids(conn: sqlite3.Connection) -> set[str]:
+    rows = conn.execute(
+        "SELECT queue_item_id FROM queue_items WHERE state = 'completed'"
+    ).fetchall()
+    return {str(row["queue_item_id"]) for row in rows}
+
+
+def store_transition(conn: sqlite3.Connection, transition: dict[str, Any], lease_validator) -> dict[str, Any]:
+    lease_validator.validate(transition)
+    queue_item_id = transition["queue_item_id"]
+    row = conn.execute(
+        "SELECT queue_item_id FROM queue_items WHERE queue_item_id = ?",
+        [queue_item_id],
+    ).fetchone()
+    if row is None:
+        raise RuntimeError(f"queue item not found: {queue_item_id}")
+    conn.execute(
+        """
+        INSERT INTO lease_transitions (transition_id, queue_item_id, occurred_at_utc, raw_payload_json)
+        VALUES (?, ?, ?, ?)
+        """,
+        [
+            transition["transition_id"],
+            queue_item_id,
+            transition["occurred_at_utc"],
+            json.dumps(transition, ensure_ascii=True, sort_keys=True),
+        ],
+    )
+    blocked_reason = None
+    if transition["state_to"] == "blocked":
+        blocked_reason = transition["transition_reason"]
+    conn.execute(
+        """
+        UPDATE queue_items
+        SET state = ?,
+            lease_owner = ?,
+            lease_expires_at_utc = ?,
+            blocked_reason = ?,
+            attempt_count = ?,
+            retry_budget_remaining = ?,
+            dead_letter_reason = ?,
+            completion_evidence_ref = ?,
+            updated_at_utc = ?
+        WHERE queue_item_id = ?
+        """,
+        [
+            transition["state_to"],
+            transition["lease_owner"],
+            transition.get("lease_expires_at_utc"),
+            blocked_reason,
+            transition["attempt_count"],
+            transition["retry_budget_remaining"],
+            transition.get("dead_letter_reason"),
+            transition.get("completion_evidence_ref"),
+            now_utc(),
+            queue_item_id,
+        ],
+    )
+    conn.commit()
+    return read_queue_rows(conn, "WHERE queue_item_id = ?", [queue_item_id])[0]
+
+
 def command_list_ready(args) -> int:
     conn = connect(Path(args.db))
     rows = read_queue_rows(
@@ -203,59 +297,13 @@ def command_record_transition(args) -> int:
     transition = load_json(Path(args.transition_json), None)
     if transition is None:
         raise SystemExit(f"transition json not found: {args.transition_json}")
-    lease_validator.validate(transition)
     conn = connect(Path(args.db))
-    queue_item_id = transition["queue_item_id"]
-    row = conn.execute(
-        "SELECT queue_item_id FROM queue_items WHERE queue_item_id = ?",
-        [queue_item_id],
-    ).fetchone()
-    if row is None:
-        raise SystemExit(f"queue item not found: {queue_item_id}")
-    conn.execute(
-        """
-        INSERT INTO lease_transitions (transition_id, queue_item_id, occurred_at_utc, raw_payload_json)
-        VALUES (?, ?, ?, ?)
-        """,
-        [
-            transition["transition_id"],
-            queue_item_id,
-            transition["occurred_at_utc"],
-            json.dumps(transition, ensure_ascii=True, sort_keys=True),
-        ],
-    )
-    conn.execute(
-        """
-        UPDATE queue_items
-        SET state = ?,
-            lease_owner = ?,
-            lease_expires_at_utc = ?,
-            attempt_count = ?,
-            retry_budget_remaining = ?,
-            dead_letter_reason = ?,
-            completion_evidence_ref = ?,
-            updated_at_utc = ?
-        WHERE queue_item_id = ?
-        """,
-        [
-            transition["state_to"],
-            transition["lease_owner"],
-            transition.get("lease_expires_at_utc"),
-            transition["attempt_count"],
-            transition["retry_budget_remaining"],
-            transition.get("dead_letter_reason"),
-            transition.get("completion_evidence_ref"),
-            now_utc(),
-            queue_item_id,
-        ],
-    )
-    conn.commit()
-    updated = read_queue_rows(conn, "WHERE queue_item_id = ?", [queue_item_id])[0]
+    updated = store_transition(conn, transition, lease_validator)
     conn.close()
     report = {
         "db": args.db,
         "transition_json": args.transition_json,
-        "queue_item_id": queue_item_id,
+        "queue_item_id": transition["queue_item_id"],
         "state_to": transition["state_to"],
         "verdict": "pass",
         "queue_item": updated,
@@ -280,6 +328,7 @@ def build_parser() -> argparse.ArgumentParser:
     seed_parser.add_argument("--db", default="runtime-artifacts/scheduler-queue/runtime-queue.sqlite3")
     seed_parser.add_argument("--queue", required=True)
     seed_parser.add_argument("--queue-item-schema", default=str(DEFAULT_QUEUE_ITEM_SCHEMA))
+    seed_parser.add_argument("--replace-existing", action="store_true")
     seed_parser.add_argument("--output", default=None)
     seed_parser.set_defaults(func=command_seed)
 
