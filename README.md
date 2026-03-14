@@ -27,6 +27,7 @@ Runtime surface for UAP Executor/Worker integration.
 - `scripts/validate_runbook_contract.py`
 - `scripts/validate_runtime_integration_runbook.py`
 - `scripts/test_runtime_guardrails.sh`
+- `scripts/send_supervisor_status_update.py`
 
 Topology guide:
 - `docs/repo-topology.md`
@@ -47,6 +48,7 @@ The workspace bootstrap is intentionally thin in this step.
 - runtime package directories land in follow-up cards
 - current Python scripts remain the validation and smoke harness
 - local runtime outputs stay under `runtime-artifacts/`
+- supervisor handoff delivery entrypoints stay in `scripts/` until transport packages are introduced
 
 Current scaffolded runtime packages:
 - `packages/contract-bindings`
