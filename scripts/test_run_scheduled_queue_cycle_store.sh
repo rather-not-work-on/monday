@@ -11,10 +11,32 @@ DB_PATH="$TMP_DIR/runtime-queue.sqlite3"
 REPORT_PATH="$TMP_DIR/run-report-store.json"
 IDEMPOTENCY_PATH="$TMP_DIR/idempotency.json"
 TRANSITION_LOG="$TMP_DIR/scheduled-cycle-store.ndjson"
+HANDOFF_PATH="$TMP_DIR/worker-outcome-handoff.json"
+OUTCOME_PATH="$TMP_DIR/worker-outcome.json"
+
+cat > "$OUTCOME_PATH" <<'JSON'
+{
+  "transition_id": "wave12-outcome-001",
+  "queue_item_id": "queue-wave4-001",
+  "goal_key": "uap-goal-driven-autonomy-wave4",
+  "schedule_key": "local-tick-5m",
+  "lease_owner": "monday-test-worker",
+  "worker_run_id": "test-scheduled-cycle-store-1",
+  "state_from": "leased",
+  "state_to": "completed",
+  "transition_reason": "worker.completed",
+  "occurred_at_utc": "2026-03-14T09:45:00Z",
+  "attempt_count": 1,
+  "retry_budget_remaining": 2,
+  "completion_evidence_ref": "runtime-artifacts/worker-outcome/test-scheduled-cycle-store-1.json"
+}
+JSON
 
 python3 scripts/run_scheduled_queue_cycle.py \
   --queue fixtures/runtime-scheduler-queue.sample.json \
   --queue-db "$DB_PATH" \
+  --worker-outcome-json "$OUTCOME_PATH" \
+  --worker-outcome-handoff-output "$HANDOFF_PATH" \
   --lease-schema ../platform-contracts/schemas/runtime-scheduler-lease-lifecycle.schema.json \
   --lease-owner monday-test-worker \
   --lease-duration-seconds 180 \
@@ -42,6 +64,12 @@ if report["dequeued_count"] != 1:
     raise SystemExit(f"expected dequeued_count=1, got {report['dequeued_count']}")
 if report["blocked_count"] != 1:
     raise SystemExit(f"expected blocked_count=1, got {report['blocked_count']}")
+if report["handoff_required"] is not True:
+    raise SystemExit(f"expected handoff_required=true, got {report['handoff_required']}")
+if not report["worker_outcome_handoff_ref"]:
+    raise SystemExit("expected worker_outcome_handoff_ref to be populated")
+if report["worker_outcome_handoff_contract_ref"] != "planningops/contracts/scheduled-worker-outcome-handoff-contract.md":
+    raise SystemExit("unexpected worker outcome handoff contract ref")
 
 conn = sqlite3.connect(sys.argv[2])
 conn.row_factory = sqlite3.Row
@@ -78,6 +106,22 @@ if second["blocked_reason"] != "dependency.unresolved":
     )
 if transition_count != 2:
     raise SystemExit(f"expected 2 lease transitions, got {transition_count}")
+PY
+
+python3 - "$HANDOFF_PATH" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+handoff = json.loads(Path(sys.argv[1]).read_text())
+if handoff["handoff_contract_ref"] != "planningops/contracts/scheduled-worker-outcome-handoff-contract.md":
+    raise SystemExit("unexpected handoff contract ref")
+if handoff["scheduled_run_id"] != "test-scheduled-cycle-store-1":
+    raise SystemExit(f"unexpected scheduled_run_id: {handoff['scheduled_run_id']}")
+if handoff["queue_item_id"] != "queue-wave4-001":
+    raise SystemExit(f"unexpected queue_item_id: {handoff['queue_item_id']}")
+if handoff["source_worker_outcome_contract_ref"] != "platform-contracts/schemas/runtime-queue-worker-outcome.schema.json":
+    raise SystemExit("unexpected worker outcome contract ref")
 PY
 
 echo "scheduled queue cycle store test passed"
