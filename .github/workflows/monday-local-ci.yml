@@ -91,6 +91,9 @@ jobs:
       - name: Verify operator channel delivery CLI contract
         run: bash scripts/test_operator_channel_delivery_cli.sh
 
+      - name: Verify supervisor status update CLI contract
+        run: bash scripts/test_supervisor_status_update_cli.sh
+
       - name: Verify runtime integration guardrails
         run: bash scripts/test_runtime_guardrails.sh
 
