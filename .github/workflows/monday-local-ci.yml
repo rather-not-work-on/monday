@@ -109,6 +109,9 @@ jobs:
       - name: Verify worker outcome lifecycle
         run: bash scripts/test_record_queue_worker_outcome.sh
 
+      - name: Verify worker outcome reflection packet export
+        run: bash scripts/test_export_worker_outcome_reflection_packet.sh
+
       - name: Verify runtime integration guardrails
         run: bash scripts/test_runtime_guardrails.sh
 
