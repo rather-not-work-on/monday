@@ -61,6 +61,17 @@ def find_queue_item(queue_doc: dict, queue_item_id: str):
     return None
 
 
+def load_queue_doc_from_db(queue_db: Path) -> dict:
+    conn = connect_queue_store(queue_db)
+    rows = read_queue_rows(conn)
+    completed_queue_item_ids = list_completed_queue_item_ids(conn)
+    conn.close()
+    return {
+        "queue_items": rows,
+        "completed_queue_item_ids": sorted(completed_queue_item_ids),
+    }
+
+
 def build_worker_outcome_handoff(
     *,
     queue_doc: dict,
@@ -452,7 +463,7 @@ def run_store_backed_wave4_cycle(args, queue_doc: dict, processed: set[str], run
 
 def main():
     parser = argparse.ArgumentParser(description="Run a scheduled queue cycle baseline")
-    parser.add_argument("--queue", default="fixtures/queue.sample.json")
+    parser.add_argument("--queue", default=None)
     parser.add_argument("--run-id", default=None)
     parser.add_argument("--idempotency", default="runtime-artifacts/scheduler-cycle/idempotency.json")
     parser.add_argument("--report", default="runtime-artifacts/scheduler-cycle/run-report.json")
@@ -477,7 +488,12 @@ def main():
     args = parser.parse_args()
 
     run_id = args.run_id or f"scheduled-cycle-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
-    queue_doc = load_json(Path(args.queue), {})
+    if args.queue is None:
+        if not args.queue_db:
+            raise SystemExit("--queue is required unless --queue-db is supplied for store-only execution")
+        queue_doc = {}
+    else:
+        queue_doc = load_json(Path(args.queue), {})
     idem_doc = load_json(Path(args.idempotency), {"processed_card_ids": []})
     processed = set(idem_doc.get("processed_card_ids", []))
     report_path = Path(args.report)
@@ -486,6 +502,11 @@ def main():
         dequeued, blocked, duplicates, replanning_triggered_cards = run_store_backed_wave4_cycle(
             args, queue_doc, processed, run_id
         )
+    elif args.queue_db and args.queue is None:
+        dequeued, blocked, duplicates, replanning_triggered_cards = run_store_backed_wave4_cycle(
+            args, queue_doc, processed, run_id
+        )
+        queue_doc = load_queue_doc_from_db(Path(args.queue_db))
     elif "queue_items" in queue_doc:
         dequeued, blocked, duplicates, replanning_triggered_cards = run_wave4_cycle(
             args, queue_doc, processed, run_id

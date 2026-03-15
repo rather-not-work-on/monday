@@ -106,11 +106,17 @@ jobs:
       - name: Verify runtime queue store baseline
         run: bash scripts/test_runtime_queue_store.sh
 
+      - name: Verify queue admission packet CLI
+        run: bash scripts/test_admit_scheduled_queue_packet.sh
+
       - name: Verify scheduler-native worker outcome selector
         run: bash scripts/test_select_scheduled_worker_outcome.sh
 
       - name: Verify SQLite-backed scheduled queue cycle
         run: bash scripts/test_run_scheduled_queue_cycle_store.sh
+
+      - name: Verify SQLite-backed scheduled queue cycle store-only path
+        run: bash scripts/test_run_scheduled_queue_cycle_store_only.sh
 
       - name: Verify worker outcome lifecycle
         run: bash scripts/test_record_queue_worker_outcome.sh
