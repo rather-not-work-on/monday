@@ -76,10 +76,14 @@ def build_checkpoint(packet: dict, checkpoint_ref: str, ack_reason: str) -> dict
     }
 
 
-def main() -> int:
-    args = parse_args()
-    root = repo_root()
-    packet_path = resolve_path(args.dispatch_packet_file, root=root)
+def record_ack_checkpoint(
+    dispatch_packet_file: str,
+    *,
+    ack_reason: str,
+    root: Path | None = None,
+) -> tuple[Path, dict]:
+    root = root or repo_root()
+    packet_path = resolve_path(dispatch_packet_file, root=root)
     packet = load_dispatch_packet(packet_path)
 
     ensure_runtime_artifact_boundary(
@@ -100,20 +104,32 @@ def main() -> int:
         ack_status = "already_recorded"
         ack_reason = require_string(checkpoint, "ack_reason")
     else:
-        checkpoint = build_checkpoint(packet, checkpoint_ref, args.ack_reason)
+        checkpoint = build_checkpoint(packet, checkpoint_ref, ack_reason)
         checkpoint["dispatch_packet_ref"] = dispatch_packet_ref
         write_json(checkpoint_path, checkpoint)
         ack_status = "recorded"
-        ack_reason = args.ack_reason
 
-    report = {
-        "generated_at_utc": now_utc(),
-        "script": str(Path(__file__).name),
+    return checkpoint_path, {
         "dispatch_packet_file": dispatch_packet_ref,
         "ack_status": ack_status,
         "ack_reason": ack_reason,
         "ack_checkpoint_ref": checkpoint_ref,
         "ack_checkpoint": checkpoint,
+    }
+
+
+def main() -> int:
+    args = parse_args()
+    root = repo_root()
+    _checkpoint_path, ack_result = record_ack_checkpoint(
+        args.dispatch_packet_file,
+        ack_reason=args.ack_reason,
+        root=root,
+    )
+    report = {
+        "generated_at_utc": now_utc(),
+        "script": str(Path(__file__).name),
+        **ack_result,
         "verdict": "pass",
     }
     write_json(Path(args.output), report)
