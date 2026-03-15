@@ -9,6 +9,9 @@
     "verdict",
     "reason_code",
     "reason_taxonomy_version",
+    "delivery_cycle_required",
+    "selected_delivery_entrypoint",
+    "delivery_cycle_report_ref",
     "handoff_required",
     "worker_outcome_handoff_ref",
     "worker_outcome_handoff_contract_ref",
@@ -30,9 +33,12 @@
     "worker_outcome_handoff_contract_ref": {"type": "string", "minLength": 1},
     "reason_code": {
       "type": "string",
-      "enum": ["ok", "duplicates_detected", "blocked_dependencies", "scheduler_no_dequeue"]
+      "enum": ["ok", "duplicates_detected", "blocked_dependencies", "scheduler_no_dequeue", "delivery_cycle_failed"]
     },
     "reason_taxonomy_version": {"type": "integer", "minimum": 1},
+    "delivery_cycle_required": {"type": "boolean"},
+    "selected_delivery_entrypoint": {"type": "string", "minLength": 1},
+    "delivery_cycle_report_ref": {"type": "string", "minLength": 1},
     "dequeued_count": {"type": "integer", "minimum": 0},
     "blocked_count": {"type": "integer", "minimum": 0},
     "duplicate_count": {"type": "integer", "minimum": 0},

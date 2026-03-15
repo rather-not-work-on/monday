@@ -37,7 +37,7 @@ def parse_args():
     parser.add_argument("--delivery-target", default=None)
     parser.add_argument("--channel-kind", default=None)
     parser.add_argument("--profiles-config", default=None)
-    parser.add_argument("--mode", choices=["apply", "dry-run"], default="apply")
+    parser.add_argument("--mode", choices=["apply", "dry-run"], default=None)
     parser.add_argument("--delivery-report-file", default=None)
     parser.add_argument("--dispatch-packet-file", default=None)
     parser.add_argument("--execution-packet-file", default=None)

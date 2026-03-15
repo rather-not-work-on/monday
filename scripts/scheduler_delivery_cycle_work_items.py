@@ -11,6 +11,7 @@ from runtime_evidence_contract import load_json
 SCHEDULED_DELIVERY_HANDOFF_CONTRACT_REF = "planningops/contracts/scheduled-delivery-cycle-handoff-contract.md"
 OPERATOR_ENTRYPOINT = "scripts/run_operator_message_delivery_cycle.py"
 GOAL_COMPLETION_ENTRYPOINT = "scripts/run_goal_completion_delivery_cycle.py"
+DELIVERY_WORK_ITEM_ROOT = Path("runtime-artifacts/messaging/scheduled-delivery-work-items")
 ALLOWED_OPERATOR_MESSAGE_CLASSES = {"status_update", "decision_request", "blocked_report"}
 
 
@@ -80,3 +81,18 @@ def load_delivery_work_item(queue_item: dict, *, root: Path | None = None) -> di
             normalized[key] = value
 
     return normalized
+
+
+def maybe_load_delivery_work_item(queue_item: dict, *, root: Path | None = None) -> dict | None:
+    root = root or repo_root()
+    work_payload_ref = str(queue_item.get("work_payload_ref") or "").strip()
+    if not work_payload_ref:
+        return None
+    work_payload_path = resolve_path(work_payload_ref, root=root).resolve()
+    try:
+        relative = work_payload_path.relative_to(root.resolve())
+    except ValueError:
+        return None
+    if relative == DELIVERY_WORK_ITEM_ROOT or DELIVERY_WORK_ITEM_ROOT not in [Path(*relative.parts[: len(DELIVERY_WORK_ITEM_ROOT.parts)])]:
+        return None
+    return load_delivery_work_item(queue_item, root=root)

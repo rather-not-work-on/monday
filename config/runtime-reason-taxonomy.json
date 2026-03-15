@@ -6,6 +6,7 @@
     "scheduler_no_dequeue": "Scheduler completed without dequeuing any runtime card.",
     "scheduler_blocked_cards": "Scheduler reported unresolved dependency blocks.",
     "duplicates_detected": "Scheduler idempotency prevented duplicate dequeue for at least one card.",
-    "blocked_dependencies": "Scheduler observed unresolved dependency edges but still produced valid evidence."
+    "blocked_dependencies": "Scheduler observed unresolved dependency edges but still produced valid evidence.",
+    "delivery_cycle_failed": "Scheduler selected a queue-native delivery work item but the monday delivery-cycle entrypoint did not complete successfully."
   }
 }
