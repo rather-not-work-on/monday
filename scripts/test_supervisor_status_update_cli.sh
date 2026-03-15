@@ -9,6 +9,22 @@ operator_report="$TMP_DIR/operator-report.json"
 inbox_payload="$TMP_DIR/inbox-payload.json"
 dry_run_report="$TMP_DIR/supervisor-status-update-report.json"
 apply_report="$TMP_DIR/supervisor-status-update-apply-report.json"
+profiles_config="$TMP_DIR/local-operator-channel-profiles.json"
+
+cat >"$profiles_config" <<JSON
+{
+  "config_version": 1,
+  "profiles": {
+    "slack_skill_cli": {
+      "channel_kind": "slack_skill_cli",
+      "transport_kind": "local_outbox",
+      "outbox_root": "$TMP_DIR/tmp-outbox/slack",
+      "default_target_name": "monday-operator",
+      "supports_threads": true
+    }
+  }
+}
+JSON
 
 cat >"$operator_report" <<'JSON'
 {
@@ -69,15 +85,12 @@ assert doc["payload"]["metadata"]["handoff_contract_ref"] == "planningops/contra
 assert doc["payload"]["metadata"]["attachments"][0].endswith("operator-summary.md"), doc
 PY
 
-if python3 "$ROOT_DIR/scripts/send_supervisor_status_update.py" \
+python3 "$ROOT_DIR/scripts/send_supervisor_status_update.py" \
   --operator-report-file "$operator_report" \
   --inbox-payload-file "$inbox_payload" \
-  --delivery-target "slack://monday/thread-123" \
+  --profiles-config "$profiles_config" \
   --mode apply \
-  --output "$apply_report"; then
-  echo "expected supervisor status update apply baseline to fail without transport"
-  exit 1
-fi
+  --output "$apply_report"
 
 python3 - <<'PY' "$apply_report"
 import json
@@ -85,9 +98,11 @@ import sys
 from pathlib import Path
 
 doc = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-assert doc["verdict"] == "fail", doc
-assert doc["delivery_report"]["deliveryVerdict"] == "blocked", doc
-assert doc["errors"] == ["operator_transport_not_configured"], doc
+assert doc["verdict"] == "pass", doc
+assert doc["delegate_script"] == "scripts/send_operator_message.py", doc
+assert doc["delegate_report"]["delivery_report"]["deliveryVerdict"] == "delivered_local_outbox", doc
+assert "tmp-outbox/slack/" in doc["delegate_report"]["outbox_message_ref"], doc
+assert Path(doc["delegate_report"]["outbox_message_ref"]).exists(), doc
 PY
 
 echo "supervisor status update cli contract ok"

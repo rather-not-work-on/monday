@@ -1,0 +1,33 @@
+{
+  "config_version": 1,
+  "profiles": {
+    "slack_skill_cli": {
+      "channel_kind": "slack_skill_cli",
+      "transport_kind": "local_outbox",
+      "outbox_root": "runtime-artifacts/messaging/outbox/slack",
+      "default_target_name": "monday-operator",
+      "supports_threads": true
+    },
+    "slack_skill_mcp": {
+      "channel_kind": "slack_skill_mcp",
+      "transport_kind": "local_outbox",
+      "outbox_root": "runtime-artifacts/messaging/outbox/slack",
+      "default_target_name": "monday-operator",
+      "supports_threads": true
+    },
+    "email_cli": {
+      "channel_kind": "email_cli",
+      "transport_kind": "local_outbox",
+      "outbox_root": "runtime-artifacts/messaging/outbox/email",
+      "default_target_name": "terminal-notifications",
+      "supports_threads": false
+    },
+    "email_mcp": {
+      "channel_kind": "email_mcp",
+      "transport_kind": "local_outbox",
+      "outbox_root": "runtime-artifacts/messaging/outbox/email",
+      "default_target_name": "terminal-notifications",
+      "supports_threads": false
+    }
+  }
+}

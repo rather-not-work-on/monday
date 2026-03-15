@@ -28,6 +28,7 @@ def parse_args():
     parser.add_argument("--delivery-target", default=None)
     parser.add_argument("--channel-kind", default=None)
     parser.add_argument("--thread-ref", default=None)
+    parser.add_argument("--profiles-config", default=None)
     parser.add_argument("--mode", choices=["dry-run", "apply"], default="dry-run")
     parser.add_argument("--output", default="runtime-artifacts/messaging/reflection-decision-update-report.json")
     return parser.parse_args()
@@ -102,8 +103,6 @@ def build_status_payload(action: dict, args) -> dict:
             "reflectionEvaluationRef": require_string(action, "reflection_evaluation_ref"),
         },
     }
-    if not payload["target"]["deliveryTarget"]:
-        raise SystemExit("delivery-target is required for status delivery")
     goal_transition_report_path = optional_string(action, "goal_transition_report_path")
     if goal_transition_report_path and goal_transition_report_path != "-":
         payload["metadata"]["goalTransitionReportPath"] = goal_transition_report_path
@@ -140,12 +139,10 @@ def build_completion_payload(action: dict, args) -> dict:
             "goalTransitionReportPath": transition_report_path,
         },
     }
-    if not payload["target"]["deliveryTarget"]:
-        raise SystemExit("delivery-target is required for goal-completion delivery")
     return payload
 
 
-def invoke_delegate(script_name: str, payload: dict, output_path: Path) -> tuple[int, dict]:
+def invoke_delegate(script_name: str, payload: dict, output_path: Path, profiles_config: str | None) -> tuple[int, dict]:
     command = [
         sys.executable,
         str(Path(__file__).resolve().parent / script_name),
@@ -154,6 +151,8 @@ def invoke_delegate(script_name: str, payload: dict, output_path: Path) -> tuple
         "--output",
         str(output_path),
     ]
+    if profiles_config:
+        command.extend(["--profiles-config", profiles_config])
     result = subprocess.run(command, capture_output=True, text=True, cwd=Path(__file__).resolve().parent.parent)
     report = load_json(str(output_path))
     if result.stdout.strip():
@@ -202,7 +201,7 @@ def main():
             payload = build_status_payload(action, args)
             delegate_script = "send_operator_message.py"
 
-        rc, delegate_report = invoke_delegate(delegate_script, payload, delegate_output)
+        rc, delegate_report = invoke_delegate(delegate_script, payload, delegate_output, args.profiles_config)
         result = {
             "generated_at_utc": now_utc(),
             "script": str(Path(__file__).name),

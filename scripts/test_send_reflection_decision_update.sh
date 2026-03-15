@@ -7,6 +7,28 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 
 cd "$ROOT_DIR"
 
+cat >"$TMP_DIR/local-operator-channel-profiles.json" <<JSON
+{
+  "config_version": 1,
+  "profiles": {
+    "slack_skill_cli": {
+      "channel_kind": "slack_skill_cli",
+      "transport_kind": "local_outbox",
+      "outbox_root": "$TMP_DIR/tmp-outbox/slack",
+      "default_target_name": "monday-operator",
+      "supports_threads": true
+    },
+    "email_cli": {
+      "channel_kind": "email_cli",
+      "transport_kind": "local_outbox",
+      "outbox_root": "$TMP_DIR/tmp-outbox/email",
+      "default_target_name": "terminal-notifications",
+      "supports_threads": false
+    }
+  }
+}
+JSON
+
 cat >"$TMP_DIR/continue-action.json" <<'JSON'
 {
   "handoff_contract_ref": "planningops/contracts/reflection-action-handoff-contract.md",
@@ -187,6 +209,44 @@ assert doc["delegate_script"] == "scripts/send_goal_completion_notification.py",
 assert doc["payload"]["messageClass"] == "goal_completed", doc
 assert doc["payload"]["achievedAtUtc"] == "2026-03-14T08:00:00Z", doc
 assert doc["delegate_report"]["delivery_report"]["deliveryVerdict"] == "dry_run", doc
+PY
+
+python3 "$ROOT_DIR/scripts/send_reflection_decision_update.py" \
+  --action-file "$TMP_DIR/replan-action.json" \
+  --profiles-config "$TMP_DIR/local-operator-channel-profiles.json" \
+  --mode apply \
+  --output "$TMP_DIR/replan-local-apply-report.json"
+
+python3 - <<'PY' "$TMP_DIR/replan-local-apply-report.json"
+import json
+import sys
+from pathlib import Path
+
+doc = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+assert doc["verdict"] == "pass", doc
+assert doc["delegate_report"]["delivery_report"]["deliveryVerdict"] == "delivered_local_outbox", doc
+outbox_ref = doc["delegate_report"]["outbox_message_ref"]
+assert "tmp-outbox/slack/" in outbox_ref, doc
+assert Path(outbox_ref).exists(), doc
+PY
+
+python3 "$ROOT_DIR/scripts/send_reflection_decision_update.py" \
+  --action-file "$TMP_DIR/goal-completed-action.json" \
+  --profiles-config "$TMP_DIR/local-operator-channel-profiles.json" \
+  --mode apply \
+  --output "$TMP_DIR/goal-completed-local-apply-report.json"
+
+python3 - <<'PY' "$TMP_DIR/goal-completed-local-apply-report.json"
+import json
+import sys
+from pathlib import Path
+
+doc = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+assert doc["verdict"] == "pass", doc
+assert doc["delegate_report"]["delivery_report"]["deliveryVerdict"] == "delivered_local_outbox", doc
+outbox_ref = doc["delegate_report"]["outbox_message_ref"]
+assert "tmp-outbox/email/" in outbox_ref, doc
+assert Path(outbox_ref).exists(), doc
 PY
 
 if python3 "$ROOT_DIR/scripts/send_reflection_decision_update.py" \

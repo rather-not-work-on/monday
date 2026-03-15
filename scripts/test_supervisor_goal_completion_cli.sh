@@ -10,6 +10,22 @@ operator_summary="$TMP_DIR/operator-summary.md"
 transition_report="$TMP_DIR/goal-transition-report.json"
 dry_run_report="$TMP_DIR/supervisor-goal-completion-report.json"
 apply_report="$TMP_DIR/supervisor-goal-completion-apply-report.json"
+profiles_config="$TMP_DIR/local-operator-channel-profiles.json"
+
+cat >"$profiles_config" <<JSON
+{
+  "config_version": 1,
+  "profiles": {
+    "email_cli": {
+      "channel_kind": "email_cli",
+      "transport_kind": "local_outbox",
+      "outbox_root": "$TMP_DIR/tmp-outbox/email",
+      "default_target_name": "terminal-notifications",
+      "supports_threads": false
+    }
+  }
+}
+JSON
 
 cat >"$operator_report" <<'JSON'
 {
@@ -67,16 +83,13 @@ assert doc["payload"]["achievedAtUtc"] == "2026-03-14T04:00:00Z", doc
 assert doc["payload"]["metadata"]["goal_transition_report_path"] == sys.argv[1].replace("supervisor-goal-completion-report.json", "goal-transition-report.json"), doc
 PY
 
-if python3 "$ROOT_DIR/scripts/send_supervisor_goal_completion.py" \
+python3 "$ROOT_DIR/scripts/send_supervisor_goal_completion.py" \
   --operator-report-file "$operator_report" \
   --operator-summary-file "$operator_summary" \
   --goal-transition-report-file "$transition_report" \
-  --delivery-target "mailto:operator@example.com" \
+  --profiles-config "$profiles_config" \
   --mode apply \
-  --output "$apply_report"; then
-  echo "expected supervisor goal completion apply baseline to fail without transport"
-  exit 1
-fi
+  --output "$apply_report"
 
 python3 - <<'PY' "$apply_report"
 import json
@@ -84,9 +97,11 @@ import sys
 from pathlib import Path
 
 doc = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-assert doc["verdict"] == "fail", doc
-assert doc["delivery_report"]["deliveryVerdict"] == "blocked", doc
-assert doc["errors"] == ["goal_completion_transport_not_configured"], doc
+assert doc["verdict"] == "pass", doc
+assert doc["delegate_script"] == "scripts/send_goal_completion_notification.py", doc
+assert doc["delegate_report"]["delivery_report"]["deliveryVerdict"] == "delivered_local_outbox", doc
+assert "tmp-outbox/email/" in doc["delegate_report"]["outbox_message_ref"], doc
+assert Path(doc["delegate_report"]["outbox_message_ref"]).exists(), doc
 PY
 
 echo "supervisor goal completion cli contract ok"

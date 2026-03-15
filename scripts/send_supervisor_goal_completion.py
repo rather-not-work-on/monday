@@ -5,15 +5,13 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import subprocess
 import sys
 
 from operator_channel_cli_common import (
     EMAIL_CHANNEL_KINDS,
-    build_delivery_report,
-    build_goal_completion_idempotency_key,
     ensure_channel_kind,
     now_utc,
-    write_report,
 )
 
 
@@ -27,8 +25,9 @@ def parse_args():
     parser.add_argument("--operator-report-file", required=True)
     parser.add_argument("--operator-summary-file", required=True)
     parser.add_argument("--goal-transition-report-file", default=None)
-    parser.add_argument("--delivery-target", required=True)
+    parser.add_argument("--delivery-target", default=None)
     parser.add_argument("--channel-kind", default=None)
+    parser.add_argument("--profiles-config", default=None)
     parser.add_argument("--mode", choices=["dry-run", "apply"], default="dry-run")
     parser.add_argument("--output", default="runtime-artifacts/messaging/supervisor-goal-completion-report.json")
     return parser.parse_args()
@@ -97,7 +96,7 @@ def build_payload(args, operator_report: dict, operator_summary_body: str, trans
         "achievedAtUtc": achieved_at_utc,
         "target": {
             "channelKind": resolve_channel_kind(operator_report, args.channel_kind),
-            "deliveryTarget": args.delivery_target,
+            "deliveryTarget": str(args.delivery_target or "").strip(),
         },
         "metadata": {
             "handoff_contract_ref": HANDOFF_CONTRACT_REF,
@@ -118,12 +117,20 @@ def main():
     transition_report_path = resolve_goal_transition_report_path(args, operator_report)
     transition_report = load_json(transition_report_path)
     payload = build_payload(args, operator_report, operator_summary, transition_report)
-    report = build_delivery_report(
-        payload,
-        delivery_verdict="dry_run" if args.mode == "dry-run" else "blocked",
-        idempotency_key=build_goal_completion_idempotency_key(payload),
-        timestamp_utc=now_utc(),
-    )
+    delegate_command = [
+        sys.executable,
+        str(Path(__file__).resolve().parent / "send_goal_completion_notification.py"),
+        "--payload-json",
+        json.dumps(payload, ensure_ascii=True),
+        "--mode",
+        args.mode,
+        "--output",
+        args.output,
+    ]
+    if args.profiles_config:
+        delegate_command.extend(["--profiles-config", args.profiles_config])
+    completed = subprocess.run(delegate_command, capture_output=True, text=True, cwd=Path(__file__).resolve().parent.parent)
+    delegate_report = json.loads(Path(args.output).read_text(encoding="utf-8"))
     result = {
         "generated_at_utc": now_utc(),
         "script": str(Path(__file__).name),
@@ -131,13 +138,25 @@ def main():
         "operator_summary_file": args.operator_summary_file,
         "goal_transition_report_file": transition_report_path,
         "payload": payload,
-        "delivery_report": report,
-        "errors": [] if args.mode == "dry-run" else ["goal_completion_transport_not_configured"],
-        "verdict": "pass" if args.mode == "dry-run" else "fail",
+        "delegate_script": "scripts/send_goal_completion_notification.py",
+        "delegate_report": delegate_report,
+        "delivery_report": delegate_report.get("delivery_report"),
+        "errors": list(delegate_report.get("errors") or []),
+        "verdict": "pass" if completed.returncode == 0 else "fail",
     }
-    write_report(args.output, result)
+    Path(args.output).write_text(json.dumps(result, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
+    if completed.stdout.strip():
+        result["delegate_stdout"] = completed.stdout.strip()
+        Path(args.output).write_text(json.dumps(result, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
+    if completed.stderr.strip():
+        result["delegate_stderr"] = completed.stderr.strip()
+        Path(args.output).write_text(json.dumps(result, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
     print(f"report written: {args.output}")
-    print(f"verdict={result['verdict']} delivery_verdict={report['deliveryVerdict']}")
+    print(
+        "verdict="
+        f"{result['verdict']} delivery_verdict="
+        f"{(result.get('delivery_report') or {}).get('deliveryVerdict', '-')}"
+    )
     return 0 if result["verdict"] == "pass" else 1
 
 
