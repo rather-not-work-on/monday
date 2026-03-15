@@ -12,6 +12,7 @@ profiles_config="$TMP_DIR/local-operator-channel-profiles.json"
 payload="$TMP_DIR/operator-message.json"
 cycle_report_one="$ROOT_DIR/runtime-artifacts/messaging/delivery-cycles/operator-message-wave18.json"
 cycle_report_two="$ROOT_DIR/runtime-artifacts/messaging/delivery-cycles/operator-message-wave18-repeat.json"
+cycle_report_dry_run="$ROOT_DIR/runtime-artifacts/messaging/delivery-cycles/operator-message-wave19-dry-run.json"
 
 cat >"$profiles_config" <<JSON
 {
@@ -82,4 +83,49 @@ assert doc["cycle_status"] == "already_recorded", doc
 assert doc["delivery_verdict"] == "delivered_local_outbox", doc
 assert doc["dispatch_verdict"] == "already_acknowledged", doc
 assert doc["dispatch_receipt_ref"].startswith("runtime-artifacts/messaging/dispatch-receipts/"), doc
+PY
+
+cat >"$TMP_DIR/reflection-action.json" <<'JSON'
+{
+  "handoff_contract_ref": "planningops/contracts/reflection-action-handoff-contract.md",
+  "verdict": "pass",
+  "active_goal_key": "uap-goal-driven-autonomy-wave19",
+  "queue_item_id": "queue-wave19-s20",
+  "worker_run_id": "run-wave19-s20",
+  "reflection_decision": "replan_required",
+  "decision_reason": "dead_letter_runtime_outcome",
+  "control_plane_action": "replan_backlog",
+  "action_kind": "trigger_replan_review",
+  "delivery_required": true,
+  "message_class_hint": "decision_request",
+  "operator_channel_role": "primary_operator_channel",
+  "operator_channel_kind": "slack_skill_cli",
+  "operator_channel_execution_repo": "rather-not-work-on/monday",
+  "operator_channel_adapter_contract_ref": "planningops/contracts/operator-channel-adapter-contract.md",
+  "goal_transition_required": false,
+  "requested_goal_status": "-",
+  "goal_transition_report_path": "-",
+  "handoff_summary": "Queue item queue-wave19-s20 requires replanning review.",
+  "source_packet_ref": "planningops/artifacts/validation/packet.json",
+  "reflection_evaluation_ref": "planningops/artifacts/validation/eval.json"
+}
+JSON
+
+python3 "$ROOT_DIR/scripts/run_operator_message_delivery_cycle.py" \
+  --reflection-action-file "$TMP_DIR/reflection-action.json" \
+  --profiles-config "$profiles_config" \
+  --mode dry-run \
+  --output "$cycle_report_dry_run"
+
+python3 - <<'PY' "$cycle_report_dry_run"
+import json
+import sys
+from pathlib import Path
+
+doc = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+assert doc["verdict"] == "pass", doc
+assert doc["cycle_status"] == "dry_run", doc
+assert doc["delivery_verdict"] == "dry_run", doc
+assert doc["channel_kind"] == "slack_skill_cli", doc
+assert doc["dispatch_packet_ref"] == "-", doc
 PY
