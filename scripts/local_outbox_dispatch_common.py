@@ -10,8 +10,11 @@ from runtime_queue_store import save_json
 
 
 HANDOFF_CONTRACT_REF = "planningops/contracts/local-outbox-dispatch-handoff-contract.md"
+DISPATCH_CYCLE_CONTRACT_REF = "planningops/contracts/local-dispatch-cycle-handoff-contract.md"
 DEFAULT_DISPATCH_ROOT = "runtime-artifacts/messaging/dispatch-packets"
 DEFAULT_ACK_ROOT = "runtime-artifacts/messaging/dispatch-acks"
+DEFAULT_EXECUTION_ROOT = "runtime-artifacts/messaging/dispatch-execution-packets"
+DEFAULT_RECEIPT_ROOT = "runtime-artifacts/messaging/dispatch-receipts"
 
 
 def repo_root() -> Path:
@@ -71,6 +74,14 @@ def default_dispatch_packet_path(idempotency_key: str, *, root: Path) -> Path:
 
 def default_ack_checkpoint_path(idempotency_key: str, *, root: Path) -> Path:
     return root / DEFAULT_ACK_ROOT / f"{safe_slug(idempotency_key)}.json"
+
+
+def default_execution_packet_path(idempotency_key: str, *, root: Path) -> Path:
+    return root / DEFAULT_EXECUTION_ROOT / f"{safe_slug(idempotency_key)}.json"
+
+
+def default_dispatch_receipt_path(idempotency_key: str, *, root: Path) -> Path:
+    return root / DEFAULT_RECEIPT_ROOT / f"{safe_slug(idempotency_key)}.json"
 
 
 def write_json(path: Path, payload: dict) -> None:
