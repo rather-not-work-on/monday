@@ -21,6 +21,7 @@ Runtime surface for UAP Executor/Worker integration.
 - `contracts/executor-worker-handoff-map.json`
 - `contracts/runtime-*-evidence.schema.json`
 - `config/runtime-reason-taxonomy.json`
+- `config/local-operator-channel-profiles.json`
 - `config/runtime-integration-runbook-contract.json`
 - `config/goal-completion-notifier-runbook-contract.json`
 - `config/operator-channel-adapter-runbook-contract.json`
@@ -36,6 +37,7 @@ Runtime surface for UAP Executor/Worker integration.
 - `scripts/validate_runtime_integration_runbook.py`
 - `scripts/run_scheduled_queue_cycle.py`
 - `scripts/test_runtime_guardrails.sh`
+- `scripts/operator_channel_local_outbox.py`
 - `scripts/test_run_scheduled_queue_cycle.sh`
 - `scripts/send_supervisor_status_update.py`
 - `scripts/send_supervisor_goal_completion.py`
@@ -79,6 +81,10 @@ bash scripts/test_run_scheduled_queue_cycle_store.sh
 bash scripts/test_runtime_queue_store.sh
 bash scripts/test_record_queue_worker_outcome_cli.sh
 bash scripts/test_record_queue_worker_outcome.sh
+bash scripts/test_operator_channel_delivery_cli.sh
+bash scripts/test_send_reflection_decision_update.sh
+bash scripts/test_supervisor_status_update_cli.sh
+bash scripts/test_supervisor_goal_completion_cli.sh
 bash scripts/test_scheduler_queue.sh
 bash scripts/test_runtime_guardrails.sh
 python3 scripts/validate_contract_pin.py

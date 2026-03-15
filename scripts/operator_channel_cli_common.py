@@ -38,12 +38,13 @@ def require_string(doc: dict, key: str) -> str:
     return value
 
 
-def require_target(doc: dict) -> dict:
+def require_target(doc: dict, *, require_delivery_target: bool = True) -> dict:
     target = doc.get("target")
     if not isinstance(target, dict):
         raise SystemExit("payload missing target object")
     require_string(target, "channelKind")
-    require_string(target, "deliveryTarget")
+    if require_delivery_target:
+        require_string(target, "deliveryTarget")
     return target
 
 
@@ -65,7 +66,7 @@ def ensure_message_class(doc: dict, expected: str | None = None) -> str:
 
 
 def ensure_channel_kind(doc: dict, allowed_kinds: set[str]) -> str:
-    target = require_target(doc)
+    target = require_target(doc, require_delivery_target=False)
     channel_kind = str(target["channelKind"]).strip()
     if channel_kind not in allowed_kinds:
         raise SystemExit(f"channelKind invalid for this command: {channel_kind}")
@@ -98,9 +99,19 @@ def build_goal_completion_idempotency_key(doc: dict) -> str:
     )
 
 
-def build_delivery_report(doc: dict, *, delivery_verdict: str, idempotency_key: str, timestamp_utc: str) -> dict:
+def build_delivery_report(
+    doc: dict,
+    *,
+    delivery_verdict: str,
+    idempotency_key: str,
+    timestamp_utc: str,
+    target_resolution_mode: str | None = None,
+    target_profile_ref: str | None = None,
+    transport_kind: str | None = None,
+    outbox_message_ref: str | None = None,
+) -> dict:
     target = require_target(doc)
-    return {
+    report = {
         "messageClass": require_string(doc, "messageClass"),
         "goalKey": require_string(doc, "goalKey"),
         "deliveryMode": require_string(doc, "deliveryMode"),
@@ -111,6 +122,15 @@ def build_delivery_report(doc: dict, *, delivery_verdict: str, idempotency_key: 
         "deliveryIdempotencyKey": idempotency_key,
         "threadRef": str(target.get("threadRef") or "").strip() or None,
     }
+    if target_resolution_mode is not None:
+        report["targetResolutionMode"] = target_resolution_mode
+    if target_profile_ref is not None:
+        report["targetProfileRef"] = target_profile_ref
+    if transport_kind is not None:
+        report["transportKind"] = transport_kind
+    if outbox_message_ref is not None:
+        report["outboxMessageRef"] = outbox_message_ref
+    return report
 
 
 def write_report(path: str, payload: dict) -> None:

@@ -5,15 +5,13 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import subprocess
 import sys
 
 from operator_channel_cli_common import (
     SLACK_CHANNEL_KINDS,
-    build_delivery_report,
-    build_operator_idempotency_key,
     ensure_channel_kind,
     now_utc,
-    write_report,
 )
 
 
@@ -27,9 +25,10 @@ def parse_args():
     )
     parser.add_argument("--operator-report-file", required=True)
     parser.add_argument("--inbox-payload-file", required=True)
-    parser.add_argument("--delivery-target", required=True)
+    parser.add_argument("--delivery-target", default=None)
     parser.add_argument("--channel-kind", default=None)
     parser.add_argument("--thread-ref", default=None)
+    parser.add_argument("--profiles-config", default=None)
     parser.add_argument("--mode", choices=["dry-run", "apply"], default="dry-run")
     parser.add_argument("--output", default="runtime-artifacts/messaging/supervisor-status-update-report.json")
     return parser.parse_args()
@@ -101,7 +100,7 @@ def build_payload(args, operator_report: dict, inbox_payload: dict) -> dict:
         "runId": require_string(operator_report, "run_id"),
         "target": {
             "channelKind": resolve_channel_kind(operator_report, args.channel_kind),
-            "deliveryTarget": args.delivery_target,
+            "deliveryTarget": str(args.delivery_target or "").strip(),
         },
         "metadata": {
             "supervisor_status": optional_string(operator_report, "status"),
@@ -129,25 +128,45 @@ def main():
     inbox_payload = load_json(args.inbox_payload_file)
     validate_handoff_contract(operator_report, inbox_payload)
     payload = build_payload(args, operator_report, inbox_payload)
-    report = build_delivery_report(
-        payload,
-        delivery_verdict="dry_run" if args.mode == "dry-run" else "blocked",
-        idempotency_key=build_operator_idempotency_key(payload),
-        timestamp_utc=now_utc(),
-    )
+    delegate_command = [
+        sys.executable,
+        str(Path(__file__).resolve().parent / "send_operator_message.py"),
+        "--payload-json",
+        json.dumps(payload, ensure_ascii=True),
+        "--mode",
+        args.mode,
+        "--output",
+        args.output,
+    ]
+    if args.profiles_config:
+        delegate_command.extend(["--profiles-config", args.profiles_config])
+    completed = subprocess.run(delegate_command, capture_output=True, text=True, cwd=Path(__file__).resolve().parent.parent)
+    delegate_report = json.loads(Path(args.output).read_text(encoding="utf-8"))
     result = {
         "generated_at_utc": now_utc(),
         "script": str(Path(__file__).name),
         "operator_report_file": args.operator_report_file,
         "inbox_payload_file": args.inbox_payload_file,
         "payload": payload,
-        "delivery_report": report,
-        "errors": [] if args.mode == "dry-run" else ["operator_transport_not_configured"],
-        "verdict": "pass" if args.mode == "dry-run" else "fail",
+        "delegate_script": "scripts/send_operator_message.py",
+        "delegate_report": delegate_report,
+        "delivery_report": delegate_report.get("delivery_report"),
+        "errors": list(delegate_report.get("errors") or []),
+        "verdict": "pass" if completed.returncode == 0 else "fail",
     }
-    write_report(args.output, result)
+    Path(args.output).write_text(json.dumps(result, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
+    if completed.stdout.strip():
+        result["delegate_stdout"] = completed.stdout.strip()
+        Path(args.output).write_text(json.dumps(result, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
+    if completed.stderr.strip():
+        result["delegate_stderr"] = completed.stderr.strip()
+        Path(args.output).write_text(json.dumps(result, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
     print(f"report written: {args.output}")
-    print(f"verdict={result['verdict']} delivery_verdict={report['deliveryVerdict']}")
+    print(
+        "verdict="
+        f"{result['verdict']} delivery_verdict="
+        f"{(result.get('delivery_report') or {}).get('deliveryVerdict', '-')}"
+    )
     return 0 if result["verdict"] == "pass" else 1
 
 
