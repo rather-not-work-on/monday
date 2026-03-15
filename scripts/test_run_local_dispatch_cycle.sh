@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP_DIR="$(mktemp -d)"
 TEST_OUTBOX_ROOT="runtime-artifacts/test-local-dispatch-cycle"
-trap 'rm -rf "$TMP_DIR" "$ROOT_DIR/$TEST_OUTBOX_ROOT" "$ROOT_DIR/runtime-artifacts/messaging/dispatch-packets" "$ROOT_DIR/runtime-artifacts/messaging/dispatch-acks" "$ROOT_DIR/runtime-artifacts/messaging/dispatch-execution-packets" "$ROOT_DIR/runtime-artifacts/messaging/dispatch-receipts" "$ROOT_DIR/runtime-artifacts/messaging/local-dispatch-cycle-report.json"' EXIT
+trap 'rm -rf "$TMP_DIR" "$ROOT_DIR/$TEST_OUTBOX_ROOT" "$ROOT_DIR/runtime-artifacts/messaging/dispatch-packets" "$ROOT_DIR/runtime-artifacts/messaging/dispatch-acks" "$ROOT_DIR/runtime-artifacts/messaging/dispatch-execution-packets" "$ROOT_DIR/runtime-artifacts/messaging/dispatch-receipts" "$ROOT_DIR/runtime-artifacts/messaging/delivery-cycles"' EXIT
 
 cd "$ROOT_DIR"
 
@@ -12,13 +12,14 @@ profiles_config="$TMP_DIR/local-operator-channel-profiles.json"
 operator_payload="$TMP_DIR/operator-message.json"
 operator_report="$TMP_DIR/operator-message-report.json"
 dispatch_packet="$ROOT_DIR/runtime-artifacts/messaging/dispatch-packets/wave17-cycle.json"
-cycle_report="$TMP_DIR/local-dispatch-cycle-report.json"
-cycle_report_repeat="$TMP_DIR/local-dispatch-cycle-repeat-report.json"
+cycle_report="$ROOT_DIR/runtime-artifacts/messaging/delivery-cycles/wave17-local-dispatch-cycle.json"
+cycle_report_repeat="$ROOT_DIR/runtime-artifacts/messaging/delivery-cycles/wave17-local-dispatch-cycle-repeat.json"
 
 rm -rf "$ROOT_DIR/runtime-artifacts/messaging/dispatch-packets" \
        "$ROOT_DIR/runtime-artifacts/messaging/dispatch-acks" \
        "$ROOT_DIR/runtime-artifacts/messaging/dispatch-execution-packets" \
-       "$ROOT_DIR/runtime-artifacts/messaging/dispatch-receipts"
+       "$ROOT_DIR/runtime-artifacts/messaging/dispatch-receipts" \
+       "$ROOT_DIR/runtime-artifacts/messaging/delivery-cycles"
 
 cat >"$profiles_config" <<JSON
 {

@@ -17,6 +17,8 @@ Host repeatable runtime handoff, scheduler, and validation tooling.
 - local outbox dispatch acknowledgement baseline
 - local dispatch execution packet export baseline
 - local dispatch cycle baseline
+- operator message local delivery cycle baseline
+- goal completion local delivery cycle baseline
 - supervisor handoff status update CLI
 - supervisor handoff goal completion CLI
 - generic runbook contract validation
@@ -31,6 +33,8 @@ Host repeatable runtime handoff, scheduler, and validation tooling.
 - local outbox dispatch acknowledgement tests
 - local dispatch execution packet tests
 - local dispatch cycle tests
+- operator message local delivery cycle tests
+- goal completion local delivery cycle tests
 - runtime integration runbook validation
 - runtime integration guardrail regression
 

@@ -4,14 +4,17 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP_DIR="$(mktemp -d)"
 TEST_OUTBOX_ROOT="runtime-artifacts/test-local-outbox-dispatch"
-trap 'rm -rf "$TMP_DIR" "$ROOT_DIR/$TEST_OUTBOX_ROOT" "$ROOT_DIR/runtime-artifacts/messaging/dispatch-acks"' EXIT
+trap 'rm -rf "$TMP_DIR" "$ROOT_DIR/$TEST_OUTBOX_ROOT" "$ROOT_DIR/runtime-artifacts/messaging/dispatch-packets" "$ROOT_DIR/runtime-artifacts/messaging/dispatch-acks"' EXIT
 
 cd "$ROOT_DIR"
 
 profiles_config="$TMP_DIR/local-operator-channel-profiles.json"
 operator_payload="$TMP_DIR/operator-message.json"
 operator_report="$TMP_DIR/operator-message-report.json"
-dispatch_packet="$TMP_DIR/dispatch-packet.json"
+dispatch_packet="$ROOT_DIR/runtime-artifacts/messaging/dispatch-packets/wave16-dispatch.json"
+
+rm -rf "$ROOT_DIR/runtime-artifacts/messaging/dispatch-packets" \
+       "$ROOT_DIR/runtime-artifacts/messaging/dispatch-acks"
 
 cat >"$profiles_config" <<JSON
 {
@@ -90,9 +93,9 @@ PY
 
 python3 "$ROOT_DIR/scripts/export_local_outbox_dispatch_packet.py" \
   --delivery-report-file "$operator_report" \
-  --output "$TMP_DIR/dispatch-packet-with-ack.json"
+  --output "$ROOT_DIR/runtime-artifacts/messaging/dispatch-packets/wave16-dispatch-with-ack.json"
 
-python3 - <<'PY' "$TMP_DIR/dispatch-packet-with-ack.json"
+python3 - <<'PY' "$ROOT_DIR/runtime-artifacts/messaging/dispatch-packets/wave16-dispatch-with-ack.json"
 import json
 import sys
 from pathlib import Path
