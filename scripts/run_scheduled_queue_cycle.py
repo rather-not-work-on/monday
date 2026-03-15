@@ -5,6 +5,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import re
+import subprocess
 import sys
 
 from jsonschema_compat import load_validator_exports
@@ -18,6 +19,7 @@ from runtime_queue_store import (
     store_transition,
 )
 from runtime_evidence_contract import load_json, validate_report
+from scheduler_delivery_cycle_work_items import maybe_load_delivery_work_item
 from select_scheduled_worker_outcome import select_worker_outcome
 
 
@@ -52,6 +54,51 @@ def normalize_repo_path(path: Path) -> str:
         return str(path.resolve().relative_to(REPO_ROOT.resolve()))
     except ValueError:
         return str(path.resolve())
+
+
+def scheduler_delivery_cycle_report_path(run_id: str) -> Path:
+    return REPO_ROOT / "runtime-artifacts" / "scheduler-cycle" / f"{run_id}-delivery-cycle.json"
+
+
+def run_scheduled_delivery_work_item(
+    *,
+    delivery_work_item: dict,
+    run_id: str,
+    profiles_config: str | None,
+) -> dict:
+    source_payload_path = Path(str(delivery_work_item["source_artifact_ref"]).strip())
+    if not source_payload_path.is_absolute():
+        source_payload_path = REPO_ROOT / source_payload_path
+    try:
+        source_payload_path.resolve().relative_to(REPO_ROOT.resolve())
+    except ValueError as exc:
+        raise SystemExit(
+            f"scheduled delivery source artifact must stay inside monday repo: {source_payload_path}"
+        ) from exc
+
+    output_path = scheduler_delivery_cycle_report_path(run_id)
+    cmd = [
+        sys.executable,
+        str((REPO_ROOT / str(delivery_work_item["selected_delivery_entrypoint"])).resolve()),
+        "--payload-file",
+        str(source_payload_path.resolve()),
+        "--output",
+        str(output_path.resolve()),
+    ]
+    if profiles_config:
+        cmd.extend(["--profiles-config", profiles_config])
+
+    completed = subprocess.run(cmd, capture_output=True, text=True, cwd=REPO_ROOT)
+    report_doc = load_json(output_path, None) if output_path.exists() else None
+    return {
+        "required": True,
+        "selected_delivery_entrypoint": str(delivery_work_item["selected_delivery_entrypoint"]),
+        "delivery_cycle_report_ref": normalize_repo_path(output_path),
+        "delivery_cycle_verdict": str((report_doc or {}).get("verdict") or "fail"),
+        "exit_code": int(completed.returncode),
+        "stdout_tail": completed.stdout[-2000:],
+        "stderr_tail": completed.stderr[-2000:],
+    }
 
 
 def find_queue_item(queue_doc: dict, queue_item_id: str):
@@ -477,6 +524,7 @@ def main():
     parser.add_argument("--worker-outcome-schema", default=str(DEFAULT_WORKER_OUTCOME_SCHEMA))
     parser.add_argument("--worker-outcome-handoff-output", default=None)
     parser.add_argument("--worker-outcome-selection-output", default=None)
+    parser.add_argument("--profiles-config", default=None)
     parser.add_argument("--queue-db", default=None)
     parser.add_argument(
         "--lease-schema",
@@ -523,6 +571,26 @@ def main():
     taxonomy = load_json(DEFAULT_TAXONOMY)
     handoff_required = False
     handoff_ref = "-"
+    delivery_cycle_required = False
+    selected_delivery_entrypoint = "-"
+    delivery_cycle_report_ref = "-"
+    delivery_work_item = None
+    if len(dequeued) == 1:
+        queue_item = find_queue_item(queue_doc, dequeued[0]["card_id"])
+        if queue_item is not None:
+            delivery_work_item = maybe_load_delivery_work_item(queue_item, root=REPO_ROOT)
+    if delivery_work_item is not None:
+        delivery_result = run_scheduled_delivery_work_item(
+            delivery_work_item=delivery_work_item,
+            run_id=run_id,
+            profiles_config=args.profiles_config,
+        )
+        delivery_cycle_required = True
+        selected_delivery_entrypoint = delivery_result["selected_delivery_entrypoint"]
+        delivery_cycle_report_ref = delivery_result["delivery_cycle_report_ref"]
+        if delivery_result["delivery_cycle_verdict"] != "pass":
+            reason_code = "delivery_cycle_failed"
+            verdict = "fail"
     if args.worker_outcome_json:
         worker_outcome_path = Path(args.worker_outcome_json)
         worker_outcome = load_json(worker_outcome_path, None)
@@ -598,6 +666,9 @@ def main():
         "generated_at_utc": now_utc(),
         "run_id": run_id,
         "verdict": verdict,
+        "delivery_cycle_required": delivery_cycle_required,
+        "selected_delivery_entrypoint": selected_delivery_entrypoint,
+        "delivery_cycle_report_ref": delivery_cycle_report_ref,
         "handoff_required": handoff_required,
         "worker_outcome_handoff_ref": handoff_ref,
         "worker_outcome_handoff_contract_ref": DEFAULT_HANDOFF_CONTRACT_REF,
