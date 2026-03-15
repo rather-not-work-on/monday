@@ -31,17 +31,21 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
-    args = parse_args()
-    root = Path(__file__).resolve().parent.parent
-    payload = load_payload(args.payload_file, args.payload_json)
+def run_goal_completion_delivery(
+    payload: dict,
+    *,
+    mode_override: str | None = None,
+    profiles_config: str | None = None,
+    root: Path | None = None,
+) -> dict:
+    root = root or Path(__file__).resolve().parent.parent
     ensure_message_class(payload, expected="goal_completed")
     ensure_channel_kind(payload, EMAIL_CHANNEL_KINDS)
     require_string(payload, "goalKey")
     require_string(payload, "body")
     require_string(payload, "achievedAtUtc")
-    delivery_mode = normalize_mode(payload, args.mode)
-    resolved_target = resolve_target(payload, profiles_config=args.profiles_config, root=root)
+    delivery_mode = normalize_mode(payload, mode_override)
+    resolved_target = resolve_target(payload, profiles_config=profiles_config, root=root)
     idempotency_key = build_goal_completion_idempotency_key(payload)
     outbox_message_ref = "-"
     if delivery_mode == "apply" and resolved_target["target_resolution_mode"] == "local_profile":
@@ -83,9 +87,20 @@ def main():
         "errors": errors,
         "verdict": verdict,
     }
+    return result
+
+
+def main():
+    args = parse_args()
+    payload = load_payload(args.payload_file, args.payload_json)
+    result = run_goal_completion_delivery(
+        payload,
+        mode_override=args.mode,
+        profiles_config=args.profiles_config,
+    )
     write_report(args.output, result)
     print(f"report written: {args.output}")
-    print(f"verdict={result['verdict']} delivery_verdict={report['deliveryVerdict']}")
+    print(f"verdict={result['verdict']} delivery_verdict={result['delivery_report']['deliveryVerdict']}")
     return 0 if result["verdict"] == "pass" else 1
 
 
