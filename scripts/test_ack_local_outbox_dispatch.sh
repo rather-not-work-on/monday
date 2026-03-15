@@ -4,16 +4,19 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP_DIR="$(mktemp -d)"
 TEST_OUTBOX_ROOT="runtime-artifacts/test-local-outbox-ack"
-trap 'rm -rf "$TMP_DIR" "$ROOT_DIR/$TEST_OUTBOX_ROOT" "$ROOT_DIR/runtime-artifacts/messaging/dispatch-acks"' EXIT
+trap 'rm -rf "$TMP_DIR" "$ROOT_DIR/$TEST_OUTBOX_ROOT" "$ROOT_DIR/runtime-artifacts/messaging/dispatch-packets" "$ROOT_DIR/runtime-artifacts/messaging/dispatch-acks"' EXIT
 
 cd "$ROOT_DIR"
 
 profiles_config="$TMP_DIR/local-operator-channel-profiles.json"
 operator_payload="$TMP_DIR/operator-message.json"
 operator_report="$TMP_DIR/operator-message-report.json"
-dispatch_packet="$TMP_DIR/dispatch-packet.json"
+dispatch_packet="$ROOT_DIR/runtime-artifacts/messaging/dispatch-packets/wave16-ack.json"
 ack_report_one="$TMP_DIR/dispatch-ack-one.json"
 ack_report_two="$TMP_DIR/dispatch-ack-two.json"
+
+rm -rf "$ROOT_DIR/runtime-artifacts/messaging/dispatch-packets" \
+       "$ROOT_DIR/runtime-artifacts/messaging/dispatch-acks"
 
 cat >"$profiles_config" <<JSON
 {
@@ -72,7 +75,8 @@ checkpoint_ref = doc["ack_checkpoint_ref"]
 assert checkpoint_ref.startswith("runtime-artifacts/messaging/dispatch-acks/"), doc
 checkpoint = doc["ack_checkpoint"]
 assert checkpoint["ack_status"] == "recorded", doc
-assert checkpoint["dispatch_packet_ref"].endswith("dispatch-packet.json"), doc
+assert checkpoint["dispatch_packet_ref"].startswith("runtime-artifacts/messaging/dispatch-packets/"), doc
+assert checkpoint["dispatch_packet_ref"].endswith("wave16-ack.json"), doc
 PY
 
 python3 "$ROOT_DIR/scripts/ack_local_outbox_dispatch.py" \

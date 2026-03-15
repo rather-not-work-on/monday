@@ -122,13 +122,20 @@ def record_receipt(
     return receipt_path, receipt, "recorded"
 
 
-def main() -> int:
-    args = parse_args()
-    root = repo_root()
+def run_dispatch_cycle(
+    *,
+    dispatch_packet_file: str | None = None,
+    execution_packet_file: str | None = None,
+    receipt_file: str | None = None,
+    ack_reason: str = "dispatch_consumed_by_local_skill_boundary",
+    output: str = DEFAULT_REPORT_PATH,
+    root: Path | None = None,
+) -> tuple[Path, dict]:
+    root = root or repo_root()
 
-    if args.dispatch_packet_file:
+    if dispatch_packet_file:
         dispatch_packet_path = ensure_runtime_artifact_boundary(
-            resolve_path(args.dispatch_packet_file, root=root).resolve(),
+            resolve_path(dispatch_packet_file, root=root).resolve(),
             root=root,
         )
         selection_mode = "explicit_argument"
@@ -143,19 +150,19 @@ def main() -> int:
                 "cycle_status": "no_ready_dispatch_packet",
                 "verdict": "pass",
             }
-            write_json(Path(args.output), report)
-            print(json.dumps(report, ensure_ascii=True, indent=2))
-            return 0
+            report_path = resolve_path(output, root=root)
+            write_json(report_path, report)
+            return ensure_runtime_artifact_boundary(report_path.resolve(), root=root), report
         dispatch_packet_path = selected
 
     execution_packet_path, execution_packet = export_execution_packet(
         repo_relative(dispatch_packet_path, root),
-        output=args.execution_packet_file,
+        output=execution_packet_file,
         root=root,
     )
     ack_checkpoint_path, ack_result = record_ack_checkpoint(
         repo_relative(dispatch_packet_path, root),
-        ack_reason=args.ack_reason,
+        ack_reason=ack_reason,
         root=root,
     )
     receipt_path, receipt, cycle_status = record_receipt(
@@ -163,7 +170,7 @@ def main() -> int:
         execution_packet_path=execution_packet_path,
         dispatch_packet_path=dispatch_packet_path,
         ack_checkpoint_ref=ack_result["ack_checkpoint_ref"],
-        receipt_file=args.receipt_file,
+        receipt_file=receipt_file,
         root=root,
     )
     report = {
@@ -180,7 +187,21 @@ def main() -> int:
         "receipt_status": require_string(receipt, "receipt_status"),
         "verdict": "pass",
     }
-    write_json(Path(args.output), report)
+    report_path = resolve_path(output, root=root)
+    write_json(report_path, report)
+    return ensure_runtime_artifact_boundary(report_path.resolve(), root=root), report
+
+
+def main() -> int:
+    args = parse_args()
+    report_path, report = run_dispatch_cycle(
+        dispatch_packet_file=args.dispatch_packet_file,
+        execution_packet_file=args.execution_packet_file,
+        receipt_file=args.receipt_file,
+        ack_reason=args.ack_reason,
+        output=args.output,
+    )
+    report["report_ref"] = repo_relative(report_path, repo_root())
     print(json.dumps(report, ensure_ascii=True, indent=2))
     return 0
 

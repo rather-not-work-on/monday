@@ -63,10 +63,14 @@ def load_outbox_envelope(outbox_ref: str, *, root: Path) -> tuple[Path, dict]:
     return outbox_path, envelope
 
 
-def main() -> int:
-    args = parse_args()
-    root = repo_root()
-    report_path = resolve_path(args.delivery_report_file, root=root)
+def export_dispatch_packet(
+    delivery_report_file: str,
+    *,
+    output: str | None = None,
+    root: Path | None = None,
+) -> tuple[Path, dict]:
+    root = root or repo_root()
+    report_path = resolve_path(delivery_report_file, root=root)
     wrapper, delivery_report = load_delivery_wrapper(report_path)
     delivery_idempotency_key = validate_delivery_report(delivery_report)
 
@@ -87,7 +91,7 @@ def main() -> int:
         root=root,
     )
     dispatch_verdict = "already_acknowledged" if ack_path.exists() else "ready_for_dispatch"
-    output_path = Path(args.output) if args.output else default_dispatch_packet_path(delivery_idempotency_key, root=root)
+    output_path = resolve_path(output, root=root) if output else default_dispatch_packet_path(delivery_idempotency_key, root=root)
 
     packet = {
         "dispatch_packet_version": 1,
@@ -108,6 +112,13 @@ def main() -> int:
         "source_delivery_script": str(wrapper.get("script") or "-"),
     }
     write_json(output_path, packet)
+    return ensure_runtime_artifact_boundary(output_path.resolve(), root=root), packet
+
+
+def main() -> int:
+    args = parse_args()
+    output_path, packet = export_dispatch_packet(args.delivery_report_file, output=args.output)
+    packet["dispatch_packet_ref"] = repo_relative(output_path, repo_root())
     print(json.dumps(packet, ensure_ascii=True, indent=2))
     return 0
 
