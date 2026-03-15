@@ -16,6 +16,7 @@ from local_delivery_cycle_common import (
 )
 from local_outbox_dispatch_common import ensure_runtime_artifact_boundary, repo_relative, repo_root, require_string, resolve_path
 from operator_channel_cli_common import load_payload, write_report
+from reflection_action_delivery_payloads import build_status_payload, load_json as load_action_json, validate_action
 from run_local_dispatch_cycle import run_dispatch_cycle
 from send_operator_message import run_operator_message_delivery
 
@@ -26,6 +27,10 @@ def parse_args():
     )
     parser.add_argument("--payload-file", default=None)
     parser.add_argument("--payload-json", default=None)
+    parser.add_argument("--reflection-action-file", default=None)
+    parser.add_argument("--delivery-target", default=None)
+    parser.add_argument("--channel-kind", default=None)
+    parser.add_argument("--thread-ref", default=None)
     parser.add_argument("--profiles-config", default=None)
     parser.add_argument("--mode", choices=["apply", "dry-run"], default="apply")
     parser.add_argument("--delivery-report-file", default=None)
@@ -34,6 +39,28 @@ def parse_args():
     parser.add_argument("--receipt-file", default=None)
     parser.add_argument("--output", default=None)
     return parser.parse_args()
+
+
+def resolve_payload(args, *, root: Path) -> tuple[dict, str | None]:
+    payload_inputs = [args.payload_file is not None, args.payload_json is not None, args.reflection_action_file is not None]
+    if sum(1 for present in payload_inputs if present) != 1:
+        raise SystemExit("provide exactly one of --payload-file, --payload-json, or --reflection-action-file")
+    if args.reflection_action_file:
+        action = load_action_json(args.reflection_action_file)
+        validate_action(action)
+        if not action.get("delivery_required"):
+            raise SystemExit("reflection action must require delivery")
+        if str(action.get("message_class_hint") or "").strip() == "goal_completed":
+            raise SystemExit("goal_completed reflection action must use run_goal_completion_delivery_cycle.py")
+        payload = build_status_payload(
+            action,
+            mode=args.mode,
+            delivery_target=args.delivery_target,
+            channel_kind=args.channel_kind,
+            thread_ref=args.thread_ref,
+        )
+        return payload, str(Path(args.reflection_action_file).resolve())
+    return load_payload(args.payload_file, args.payload_json), args.payload_file
 
 
 def run_operator_delivery_cycle(
@@ -80,11 +107,25 @@ def run_operator_delivery_cycle(
         "message_class": require_string(delivery_report, "messageClass"),
         "channel_kind": require_string(delivery_report, "channelKind"),
         "delivery_idempotency_key": require_string(delivery_report, "deliveryIdempotencyKey"),
+        "delivery_verdict": require_string(delivery_report, "deliveryVerdict"),
         "cycle_status": "blocked",
         "verdict": "fail",
     }
 
-    if delivery_result["verdict"] != "pass" or require_string(delivery_report, "deliveryVerdict") != "delivered_local_outbox":
+    if delivery_result["verdict"] != "pass":
+        output_path = resolve_path(output, root=root) if output else default_delivery_cycle_report_path("operator-message", idempotency_key, root=root)
+        output_path = ensure_runtime_artifact_boundary(output_path.resolve(), root=root)
+        write_report(str(output_path), report)
+        return output_path, report
+
+    if require_string(delivery_report, "deliveryVerdict") == "dry_run":
+        report.update({"cycle_status": "dry_run", "verdict": "pass"})
+        output_path = resolve_path(output, root=root) if output else default_delivery_cycle_report_path("operator-message", idempotency_key, root=root)
+        output_path = ensure_runtime_artifact_boundary(output_path.resolve(), root=root)
+        write_report(str(output_path), report)
+        return output_path, report
+
+    if require_string(delivery_report, "deliveryVerdict") != "delivered_local_outbox":
         output_path = resolve_path(output, root=root) if output else default_delivery_cycle_report_path("operator-message", idempotency_key, root=root)
         output_path = ensure_runtime_artifact_boundary(output_path.resolve(), root=root)
         write_report(str(output_path), report)
@@ -125,10 +166,10 @@ def run_operator_delivery_cycle(
 
 def main() -> int:
     args = parse_args()
-    payload = load_payload(args.payload_file, args.payload_json)
+    payload, payload_file = resolve_payload(args, root=repo_root())
     output_path, report = run_operator_delivery_cycle(
         payload,
-        payload_file=args.payload_file,
+        payload_file=payload_file,
         profiles_config=args.profiles_config,
         mode=args.mode,
         delivery_report_file=args.delivery_report_file,
