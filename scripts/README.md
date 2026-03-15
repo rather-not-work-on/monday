@@ -13,6 +13,7 @@ Host repeatable runtime handoff, scheduler, and validation tooling.
 - queue worker outcome transition CLI baseline
 - local runtime smoke entrypoint
 - operator channel delivery CLI baselines
+- local outbox dispatch packet export baseline
 - supervisor handoff status update CLI
 - supervisor handoff goal completion CLI
 - generic runbook contract validation
@@ -23,6 +24,7 @@ Host repeatable runtime handoff, scheduler, and validation tooling.
 - SQLite-backed scheduled queue cycle regression
 - queue worker outcome transition tests
 - queue worker outcome lifecycle regression
+- local outbox dispatch packet tests
 - runtime integration runbook validation
 - runtime integration guardrail regression
 
