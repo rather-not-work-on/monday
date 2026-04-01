@@ -1,0 +1,309 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "monday-planningops-local-operator-inbox-consumer-report",
+  "title": "PlanningOps Local Operator Inbox Consumer Report",
+  "type": "object",
+  "required": [
+    "generated_at_utc",
+    "run_id",
+    "consumer_contract_ref",
+    "source_bridge_path",
+    "bridge_id",
+    "mode",
+    "verdict",
+    "reason_code",
+    "consumer_status",
+    "artifact_paths",
+    "launch_request"
+  ],
+  "properties": {
+    "generated_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "consumer_contract_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_bridge_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "bridge_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "dry-run",
+        "apply"
+      ]
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail",
+        "blocked"
+      ]
+    },
+    "reason_code": {
+      "type": "string",
+      "minLength": 1
+    },
+    "consumer_status": {
+      "type": "string",
+      "enum": [
+        "ready_to_launch",
+        "blocked"
+      ]
+    },
+    "artifact_paths": {
+      "type": "object",
+      "required": [
+        "launch_request_path",
+        "mission_file_path",
+        "runtime_report_path",
+        "report_path"
+      ],
+      "properties": {
+        "launch_request_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mission_file_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runtime_report_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "report_path": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "launch_request": {
+      "type": "object",
+      "required": [
+        "source_bridge_id",
+        "source_day_packet_id",
+        "source_mission_packet_id",
+        "mission_objective",
+        "planner_profile",
+        "launch_mode",
+        "local_model_route",
+        "first_action_command",
+        "monday_runtime_entrypoint_command",
+        "rollback_command",
+        "recommended_wait_minutes",
+        "needs_human_attention",
+        "local_validation_snapshot_status",
+        "local_validation_summary_lines",
+        "local_validation_action_lines",
+        "can_launch",
+        "block_reasons",
+        "runtime_command_args",
+        "source_artifacts"
+      ],
+      "properties": {
+        "source_bridge_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_day_packet_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_mission_packet_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mission_objective": {
+          "type": "string",
+          "minLength": 1
+        },
+        "planner_profile": {
+          "type": "string",
+          "minLength": 1
+        },
+        "launch_mode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "local_model_route": {
+          "type": "string",
+          "minLength": 1
+        },
+        "first_action_command": {
+          "type": "string",
+          "minLength": 1
+        },
+        "monday_runtime_entrypoint_command": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rollback_command": {
+          "type": "string",
+          "minLength": 1
+        },
+        "recommended_wait_minutes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "needs_human_attention": {
+          "type": "boolean"
+        },
+        "local_validation_snapshot_status": {
+          "type": "string",
+          "minLength": 1
+        },
+        "local_validation_summary_lines": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "local_validation_action_lines": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "can_launch": {
+          "type": "boolean"
+        },
+        "block_reasons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "runtime_command_args": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "runtime_input_overrides": {
+          "type": "object",
+          "required": [
+            "planner_runtime_config",
+            "runtime_profile_file"
+          ],
+          "properties": {
+            "planner_runtime_config": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "runtime_profile_file": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "source_artifacts": {
+          "type": "object",
+          "required": [
+            "day_packet_path",
+            "mission_packet_path",
+            "handoff_report_path",
+            "local_operator_report_path"
+          ],
+          "properties": {
+            "day_packet_path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "mission_packet_path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "handoff_report_path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "local_operator_report_path": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "runtime_report_summary": {
+      "type": "object",
+      "required": [
+        "verdict",
+        "reason_code",
+        "report_path"
+      ],
+      "properties": {
+        "verdict": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason_code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "report_path": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "execution": {
+      "type": "object",
+      "required": [
+        "attempted",
+        "command_args"
+      ],
+      "properties": {
+        "attempted": {
+          "type": "boolean"
+        },
+        "command_args": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "exit_code": {
+          "type": "integer"
+        },
+        "stdout": {
+          "type": "string"
+        },
+        "stderr": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

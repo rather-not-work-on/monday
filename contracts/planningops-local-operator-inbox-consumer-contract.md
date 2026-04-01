@@ -17,6 +17,7 @@ PlanningOps owns:
 
 Monday owns:
 - inbox bridge consumption
+- inbox payload and consumer report schema validation
 - launch-request materialization
 - optional apply-time execution through `scripts/run_local_runtime_smoke.py`
 - monday-side reports written under `runtime-artifacts/`
@@ -124,3 +125,7 @@ Optional fields:
 
 - `scripts/consume_planningops_local_operator_inbox_payload.py`
 - `scripts/test_consume_planningops_local_operator_inbox_payload.sh`
+- `contracts/planningops-local-operator-inbox-payload-bridge.schema.json`
+- `contracts/planningops-local-operator-inbox-consumer-report.schema.json`
+- `scripts/validate_planningops_local_operator_inbox_artifacts.py`
+- `scripts/test_validate_planningops_local_operator_inbox_artifacts.sh`
