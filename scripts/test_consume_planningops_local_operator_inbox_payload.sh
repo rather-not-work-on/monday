@@ -18,7 +18,10 @@ ready_bridge_path="$planningops_validation/monday-local-operator-inbox-payload-r
 blocked_bridge_path="$planningops_validation/monday-local-operator-inbox-payload-blocked.json"
 output_root="$TMP_DIR/runtime-artifacts/integration/planningops-local-operator-inbox"
 dry_report="$TMP_DIR/consumer-dry-run.json"
+apply_ready_report="$TMP_DIR/consumer-apply-ready.json"
 blocked_report="$TMP_DIR/consumer-apply-blocked.json"
+runtime_profile_file="$TMP_DIR/runtime-profiles.json"
+planner_runtime_file="$TMP_DIR/planner-runtime.json"
 
 cat >"$mission_packet_path" <<'JSON'
 {
@@ -301,6 +304,133 @@ assert mission_file == {
 contract_text = Path("contracts/planningops-local-operator-inbox-consumer-contract.md").read_text(encoding="utf-8")
 assert "launch_request" in contract_text, contract_text
 assert "runtime_command_args" in contract_text, contract_text
+PY
+
+cat >"$runtime_profile_file" <<'JSON'
+{
+  "active_profile": "local",
+  "profiles": {
+    "local": {
+      "execution_mode": "local",
+      "litellm_base_url": "http://127.0.0.1:4000",
+      "langfuse_host": "http://127.0.0.1:3001"
+    }
+  }
+}
+JSON
+
+cat >"$planner_runtime_file" <<'JSON'
+{
+  "config_version": 1,
+  "active_profile": "local",
+  "profiles": {
+    "local": {
+      "planner_engine": "legacy"
+    }
+  }
+}
+JSON
+
+python3 - <<'PY' "$mission_packet_path" "$day_packet_path" "$ready_bridge_path"
+import json
+import sys
+from pathlib import Path
+
+mission_path = Path(sys.argv[1])
+day_path = Path(sys.argv[2])
+bridge_path = Path(sys.argv[3])
+
+mission_doc = json.loads(mission_path.read_text(encoding="utf-8"))
+mission_doc["mission_packet"]["planner_profile"] = "local"
+mission_doc["mission_packet"]["launch_mode"] = "stack"
+mission_doc["mission_packet"]["local_model_route"] = "gateway_first_local"
+mission_doc["mission_packet"]["preflight_command"] = "python3 planningops/scripts/run_monday_local_operator_stack.py --execution-mode stack --probe-endpoints on --run-id monday-local-mission-20260401T100000Z"
+mission_doc["mission_packet"]["monday_runtime_entrypoint_command"] = "cd ../monday && python3 scripts/run_local_runtime_smoke.py --profile local --run-id monday-local-mission-20260401T100000Z"
+mission_path.write_text(json.dumps(mission_doc, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
+
+day_doc = json.loads(day_path.read_text(encoding="utf-8"))
+day_doc["day_packet"]["planner_profile"] = "local"
+day_doc["day_packet"]["launch_mode"] = "stack"
+day_doc["day_packet"]["local_model_route"] = "gateway_first_local"
+day_doc["day_packet"]["first_action_command"] = "python3 planningops/scripts/run_monday_local_operator_stack.py --execution-mode stack --probe-endpoints on --run-id monday-local-mission-20260401T100000Z"
+day_doc["day_packet"]["monday_runtime_entrypoint_command"] = "cd ../monday && python3 scripts/run_local_runtime_smoke.py --profile local --run-id monday-local-mission-20260401T100000Z"
+day_path.write_text(json.dumps(day_doc, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
+
+bridge_doc = json.loads(bridge_path.read_text(encoding="utf-8"))
+bridge_doc["payload"]["planner_profile"] = "local"
+bridge_doc["payload"]["launch_mode"] = "stack"
+bridge_doc["payload"]["local_model_route"] = "gateway_first_local"
+bridge_doc["payload"]["monday_runtime_entrypoint_command"] = "cd ../monday && python3 scripts/run_local_runtime_smoke.py --profile local --run-id monday-local-mission-20260401T100000Z"
+bridge_path.write_text(json.dumps(bridge_doc, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
+PY
+
+python3 "$ROOT_DIR/scripts/consume_planningops_local_operator_inbox_payload.py" \
+  --inbox-payload-file "$ready_bridge_path" \
+  --run-id "test-planningops-local-inbox-consumer-apply" \
+  --mode apply \
+  --planner-runtime-config "$planner_runtime_file" \
+  --runtime-profile-file "$runtime_profile_file" \
+  --output-root "$output_root" \
+  --output "$apply_ready_report"
+
+python3 - <<'PY' "$apply_ready_report" "$output_root" "$planner_runtime_file" "$runtime_profile_file"
+import json
+import sys
+from pathlib import Path
+
+report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+output_root = Path(sys.argv[2])
+planner_runtime_file = Path(sys.argv[3]).resolve()
+runtime_profile_file = Path(sys.argv[4]).resolve()
+mission_file_path = output_root / "test-planningops-local-inbox-consumer-apply" / "mission.json"
+runtime_report_path = output_root / "test-planningops-local-inbox-consumer-apply" / "local-runtime-smoke.json"
+
+assert report["verdict"] == "pass", report
+assert report["reason_code"] in {"ok", "tsx_fetch_unavailable_offline"}, report
+assert report["consumer_status"] == "ready_to_launch", report
+assert report["execution"]["attempted"] is True, report
+assert report["execution"]["exit_code"] == 0, report
+assert report["launch_request"]["can_launch"] is True, report
+assert report["launch_request"]["planner_profile"] == "local", report
+assert report["launch_request"]["launch_mode"] == "stack", report
+assert report["launch_request"]["local_model_route"] == "gateway_first_local", report
+assert report["launch_request"]["runtime_input_overrides"] == {
+    "planner_runtime_config": str(planner_runtime_file),
+    "runtime_profile_file": str(runtime_profile_file),
+}, report
+assert report["launch_request"]["runtime_command_args"] == [
+    "python3",
+    "scripts/run_local_runtime_smoke.py",
+    "--profile",
+    "local",
+    "--mission-file",
+    str(mission_file_path.resolve()),
+    "--run-id",
+    "monday-local-inbox-20260401T101000Z",
+    "--output",
+    str(runtime_report_path.resolve()),
+    "--planner-runtime-config",
+    str(planner_runtime_file),
+    "--runtime-profile-file",
+    str(runtime_profile_file),
+], report
+assert report["runtime_report_summary"]["report_path"] == str(runtime_report_path.resolve()), report
+assert report["runtime_report_summary"]["verdict"] in {"pass", "skip"}, report
+assert report["runtime_report_summary"]["reason_code"] in {"ok", "tsx_fetch_unavailable_offline"}, report
+PY
+
+python3 - <<'PY' "$blocked_bridge_path"
+import json
+import sys
+from pathlib import Path
+
+bridge_path = Path(sys.argv[1])
+bridge_doc = json.loads(bridge_path.read_text(encoding="utf-8"))
+bridge_doc["payload"]["planner_profile"] = "local"
+bridge_doc["payload"]["launch_mode"] = "stack"
+bridge_doc["payload"]["local_model_route"] = "gateway_first_local"
+bridge_doc["payload"]["monday_runtime_entrypoint_command"] = "cd ../monday && python3 scripts/run_local_runtime_smoke.py --profile local --run-id monday-local-mission-20260401T100000Z"
+bridge_path.write_text(json.dumps(bridge_doc, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
 PY
 
 python3 "$ROOT_DIR/scripts/consume_planningops_local_operator_inbox_payload.py" \

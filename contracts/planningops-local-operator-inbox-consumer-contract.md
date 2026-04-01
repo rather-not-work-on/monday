@@ -90,6 +90,7 @@ Top-level required fields:
 22. `source_artifacts.local_operator_report_path`
 
 Optional fields:
+- `runtime_input_overrides`
 - `runtime_report_summary`
 - `execution`
 
@@ -103,7 +104,8 @@ Optional fields:
    - otherwise true
 3. The generated mission file must preserve the promoted mission objective and mission packet id.
 4. The runtime command must be materialized as direct argv for `scripts/run_local_runtime_smoke.py`, not by shell parsing `monday_runtime_entrypoint_command`.
-5. `mode=apply` must refuse to execute when `can_launch` is false.
+5. When explicit runtime config override files are provided, the consumer must validate they exist and pass them through as `--planner-runtime-config` / `--runtime-profile-file`.
+6. `mode=apply` must refuse to execute when `can_launch` is false.
 
 ## Cross-Artifact Consistency Rules
 
