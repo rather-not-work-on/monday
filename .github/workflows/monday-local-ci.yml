@@ -88,6 +88,12 @@ jobs:
       - name: Verify mission-file local runtime smoke contract
         run: bash scripts/test_local_runtime_smoke_mission_file.sh
 
+      - name: Verify PlanningOps local inbox consumer contract
+        run: bash scripts/test_consume_planningops_local_operator_inbox_payload.sh
+
+      - name: Verify PlanningOps local inbox schema validation
+        run: bash scripts/test_validate_planningops_local_operator_inbox_artifacts.sh
+
       - name: Verify operator channel delivery CLI contract
         run: bash scripts/test_operator_channel_delivery_cli.sh
 

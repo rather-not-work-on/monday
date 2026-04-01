@@ -1,0 +1,248 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "monday-planningops-local-operator-inbox-payload-bridge",
+  "title": "PlanningOps Local Operator Inbox Payload Bridge",
+  "type": "object",
+  "required": [
+    "generated_at_utc",
+    "bridge_id",
+    "contract_ref",
+    "artifact_paths",
+    "payload"
+  ],
+  "properties": {
+    "generated_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "bridge_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "contract_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "artifact_paths": {
+      "type": "object",
+      "required": [
+        "latest_payload_path",
+        "stamped_payload_path",
+        "output_path"
+      ],
+      "properties": {
+        "latest_payload_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stamped_payload_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "output_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "payload": {
+      "type": "object",
+      "required": [
+        "title",
+        "status",
+        "headline",
+        "priority_headline",
+        "operator_action",
+        "recommended_wait_minutes",
+        "retry_mode",
+        "needs_human_attention",
+        "message_class_hint",
+        "planner_profile",
+        "launch_mode",
+        "local_model_route",
+        "day_packet_id",
+        "mission_packet_id",
+        "mission_objective",
+        "first_action_command",
+        "monday_runtime_entrypoint_command",
+        "rollback_command",
+        "local_validation_snapshot_status",
+        "local_validation_summary_lines",
+        "local_validation_action_lines",
+        "queue_lines",
+        "target_lines",
+        "immediate_actions",
+        "attachments",
+        "body_markdown",
+        "bridge_contract_ref",
+        "source_artifacts"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "ready",
+            "blocked"
+          ]
+        },
+        "headline": {
+          "type": "string",
+          "minLength": 1
+        },
+        "priority_headline": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operator_action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "recommended_wait_minutes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "retry_mode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "needs_human_attention": {
+          "type": "boolean"
+        },
+        "message_class_hint": {
+          "type": "string",
+          "minLength": 1
+        },
+        "planner_profile": {
+          "type": "string",
+          "minLength": 1
+        },
+        "launch_mode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "local_model_route": {
+          "type": "string",
+          "minLength": 1
+        },
+        "day_packet_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mission_packet_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mission_objective": {
+          "type": "string",
+          "minLength": 1
+        },
+        "first_action_command": {
+          "type": "string",
+          "minLength": 1
+        },
+        "monday_runtime_entrypoint_command": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rollback_command": {
+          "type": "string",
+          "minLength": 1
+        },
+        "local_validation_snapshot_status": {
+          "type": "string",
+          "minLength": 1
+        },
+        "local_validation_summary_lines": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "local_validation_action_lines": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "queue_lines": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "target_lines": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "immediate_actions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "attachments": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "body_markdown": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bridge_contract_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_artifacts": {
+          "type": "object",
+          "required": [
+            "day_packet_path",
+            "mission_packet_path",
+            "handoff_report_path",
+            "local_operator_report_path"
+          ],
+          "properties": {
+            "day_packet_path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "mission_packet_path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "handoff_report_path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "local_operator_report_path": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

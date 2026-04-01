@@ -22,6 +22,11 @@ apply_ready_report="$TMP_DIR/consumer-apply-ready.json"
 blocked_report="$TMP_DIR/consumer-apply-blocked.json"
 runtime_profile_file="$TMP_DIR/runtime-profiles.json"
 planner_runtime_file="$TMP_DIR/planner-runtime.json"
+ready_bridge_validation="$TMP_DIR/ready-bridge-validation.json"
+blocked_bridge_validation="$TMP_DIR/blocked-bridge-validation.json"
+dry_report_validation="$TMP_DIR/dry-report-validation.json"
+apply_report_validation="$TMP_DIR/apply-report-validation.json"
+blocked_report_validation="$TMP_DIR/blocked-report-validation.json"
 
 cat >"$mission_packet_path" <<'JSON'
 {
@@ -262,6 +267,16 @@ python3 "$ROOT_DIR/scripts/consume_planningops_local_operator_inbox_payload.py" 
   --output-root "$output_root" \
   --output "$dry_report"
 
+python3 "$ROOT_DIR/scripts/validate_planningops_local_operator_inbox_artifacts.py" \
+  --kind bridge \
+  --artifact "$ready_bridge_path" \
+  --output "$ready_bridge_validation"
+
+python3 "$ROOT_DIR/scripts/validate_planningops_local_operator_inbox_artifacts.py" \
+  --kind consumer-report \
+  --artifact "$dry_report" \
+  --output "$dry_report_validation"
+
 python3 - <<'PY' "$dry_report" "$output_root"
 import json
 import sys
@@ -304,6 +319,18 @@ assert mission_file == {
 contract_text = Path("contracts/planningops-local-operator-inbox-consumer-contract.md").read_text(encoding="utf-8")
 assert "launch_request" in contract_text, contract_text
 assert "runtime_command_args" in contract_text, contract_text
+PY
+
+python3 - <<'PY' "$ready_bridge_validation" "$dry_report_validation"
+import json
+import sys
+from pathlib import Path
+
+ready_bridge_validation = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+dry_report_validation = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+
+assert ready_bridge_validation["verdict"] == "pass", ready_bridge_validation
+assert dry_report_validation["verdict"] == "pass", dry_report_validation
 PY
 
 cat >"$runtime_profile_file" <<'JSON'
@@ -373,6 +400,11 @@ python3 "$ROOT_DIR/scripts/consume_planningops_local_operator_inbox_payload.py" 
   --output-root "$output_root" \
   --output "$apply_ready_report"
 
+python3 "$ROOT_DIR/scripts/validate_planningops_local_operator_inbox_artifacts.py" \
+  --kind consumer-report \
+  --artifact "$apply_ready_report" \
+  --output "$apply_report_validation"
+
 python3 - <<'PY' "$apply_ready_report" "$output_root" "$planner_runtime_file" "$runtime_profile_file"
 import json
 import sys
@@ -419,6 +451,15 @@ assert report["runtime_report_summary"]["verdict"] in {"pass", "skip"}, report
 assert report["runtime_report_summary"]["reason_code"] in {"ok", "tsx_fetch_unavailable_offline"}, report
 PY
 
+python3 - <<'PY' "$apply_report_validation"
+import json
+import sys
+from pathlib import Path
+
+apply_report_validation = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+assert apply_report_validation["verdict"] == "pass", apply_report_validation
+PY
+
 python3 - <<'PY' "$blocked_bridge_path"
 import json
 import sys
@@ -440,6 +481,16 @@ python3 "$ROOT_DIR/scripts/consume_planningops_local_operator_inbox_payload.py" 
   --output-root "$output_root" \
   --output "$blocked_report"
 
+python3 "$ROOT_DIR/scripts/validate_planningops_local_operator_inbox_artifacts.py" \
+  --kind bridge \
+  --artifact "$blocked_bridge_path" \
+  --output "$blocked_bridge_validation"
+
+python3 "$ROOT_DIR/scripts/validate_planningops_local_operator_inbox_artifacts.py" \
+  --kind consumer-report \
+  --artifact "$blocked_report" \
+  --output "$blocked_report_validation"
+
 python3 - <<'PY' "$blocked_report"
 import json
 import sys
@@ -457,6 +508,18 @@ assert report["launch_request"]["block_reasons"] == [
     "local_validation_actions_present",
 ], report
 assert report["execution"]["attempted"] is False, report
+PY
+
+python3 - <<'PY' "$blocked_bridge_validation" "$blocked_report_validation"
+import json
+import sys
+from pathlib import Path
+
+blocked_bridge_validation = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+blocked_report_validation = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+
+assert blocked_bridge_validation["verdict"] == "pass", blocked_bridge_validation
+assert blocked_report_validation["verdict"] == "pass", blocked_report_validation
 PY
 
 echo "planningops local operator inbox consumer contract ok"

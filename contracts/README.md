@@ -6,6 +6,8 @@ Define monday-owned runtime contract surfaces layered on top of shared platform 
 ## Contents
 - handoff field maps
 - runtime evidence schemas
+- planningops local inbox payload bridge acceptance schema
+- planningops local inbox consumer report schema
 - contract pin metadata
 
 ## Rules

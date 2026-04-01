@@ -144,6 +144,11 @@ def main():
         default="../platform-planningops/planningops/config/runtime-profiles.json",
         help="Path to the shared runtime profile catalog",
     )
+    parser.add_argument(
+        "--planner-runtime-config",
+        default=None,
+        help="Optional reviewed planner runtime config override recorded for auditability",
+    )
     parser.add_argument("--profile", default="local", help="Runtime profile id to resolve")
     parser.add_argument("--mission-id", default="local-mission-smoke", help="Mission id used for the smoke run")
     parser.add_argument(
@@ -172,6 +177,11 @@ def main():
     runtime_profile_file = (repo_root / args.runtime_profile_file).resolve()
     if not runtime_profile_file.exists():
         raise SystemExit(f"runtime profile file not found: {runtime_profile_file}")
+    planner_runtime_config = None
+    if args.planner_runtime_config:
+        planner_runtime_config = (repo_root / args.planner_runtime_config).resolve()
+        if not planner_runtime_config.exists():
+            raise SystemExit(f"planner runtime config not found: {planner_runtime_config}")
 
     mission, mission_source, mission_file = load_mission_input(repo_root, args.mission_file, args.mission_id, args.objective)
 
@@ -210,6 +220,7 @@ def main():
     report = {
         "generated_at_utc": now_utc(),
         "run_id": args.run_id,
+        "planner_runtime_config": None if planner_runtime_config is None else str(planner_runtime_config),
         "runtime_profile_file": str(runtime_profile_file),
         "mission_source": mission_source,
         "mission_file": mission_file,
