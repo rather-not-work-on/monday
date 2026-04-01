@@ -74,6 +74,19 @@ def resolve_existing_path(raw_path: object, label: str) -> Path:
     return path
 
 
+def resolve_optional_existing_path(raw_path: str | None, label: str) -> Path | None:
+    if raw_path is None:
+        return None
+    path = Path(raw_path)
+    if not path.is_absolute():
+        path = (REPO_ROOT / path).resolve()
+    else:
+        path = path.resolve()
+    if not path.exists():
+        raise SystemExit(f"{label} missing: {path}")
+    return path
+
+
 def build_block_reasons(*, payload_status: str, needs_human_attention: bool, local_validation_action_lines: list[str]) -> list[str]:
     reasons: list[str] = []
     if payload_status != "ready":
@@ -85,8 +98,16 @@ def build_block_reasons(*, payload_status: str, needs_human_attention: bool, loc
     return reasons
 
 
-def build_runtime_command(*, planner_profile: str, mission_file_path: Path, run_id: str, runtime_report_path: Path) -> list[str]:
-    return [
+def build_runtime_command(
+    *,
+    planner_profile: str,
+    mission_file_path: Path,
+    run_id: str,
+    runtime_report_path: Path,
+    planner_runtime_config: Path | None,
+    runtime_profile_file: Path | None,
+) -> list[str]:
+    command = [
         "python3",
         "scripts/run_local_runtime_smoke.py",
         "--profile",
@@ -98,6 +119,11 @@ def build_runtime_command(*, planner_profile: str, mission_file_path: Path, run_
         "--output",
         str(runtime_report_path.resolve()),
     ]
+    if planner_runtime_config is not None:
+        command.extend(["--planner-runtime-config", str(planner_runtime_config.resolve())])
+    if runtime_profile_file is not None:
+        command.extend(["--runtime-profile-file", str(runtime_profile_file.resolve())])
+    return command
 
 
 def parse_args() -> argparse.Namespace:
@@ -108,6 +134,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--run-id", default=f"planningops-local-inbox-consumer-{utc_timestamp_slug()}")
     parser.add_argument("--mode", choices=("dry-run", "apply"), default="dry-run")
     parser.add_argument("--output-root", default=str(DEFAULT_OUTPUT_ROOT))
+    parser.add_argument("--planner-runtime-config", default=None)
+    parser.add_argument("--runtime-profile-file", default=None)
     parser.add_argument("--output", default=None)
     return parser.parse_args()
 
@@ -135,6 +163,8 @@ def main() -> int:
     mission_file_path = run_root / "mission.json"
     runtime_report_path = run_root / "local-runtime-smoke.json"
     report_path = Path(args.output).resolve() if args.output else run_root / "consumer-report.json"
+    planner_runtime_config_path = resolve_optional_existing_path(args.planner_runtime_config, "planner runtime config")
+    runtime_profile_file_path = resolve_optional_existing_path(args.runtime_profile_file, "runtime profile file")
 
     bridge_doc = require_dict(load_json(bridge_path), "bridge payload")
     if require_string(bridge_doc.get("contract_ref"), "bridge contract ref") != PLANNINGOPS_BRIDGE_CONTRACT_REF:
@@ -212,6 +242,8 @@ def main() -> int:
         mission_file_path=mission_file_path,
         run_id=bridge_id,
         runtime_report_path=runtime_report_path,
+        planner_runtime_config=planner_runtime_config_path,
+        runtime_profile_file=runtime_profile_file_path,
     )
 
     launch_request = {
@@ -240,6 +272,15 @@ def main() -> int:
             "local_operator_report_path": str(local_operator_report_path.resolve()),
         },
     }
+    if planner_runtime_config_path is not None or runtime_profile_file_path is not None:
+        launch_request["runtime_input_overrides"] = {
+            "planner_runtime_config": None
+            if planner_runtime_config_path is None
+            else str(planner_runtime_config_path.resolve()),
+            "runtime_profile_file": None
+            if runtime_profile_file_path is None
+            else str(runtime_profile_file_path.resolve()),
+        }
     write_json(launch_request_path, launch_request)
 
     report = {
